@@ -2,7 +2,7 @@
 #   Main Configs   #
 # ---------------- #
 baseurl:
-url: https://luokai0223.github.io/
+url: https://luokai0223.github.io
 date_format: "ordinal"
 title: 夜明了
 subtitle: "记录一些思考"
@@ -124,10 +124,10 @@ collections:
 # ---------------- #
 #      Comments    #
 # ---------------- #
-# # support provider: disqus, gitment, gitalk, utterances
-# comments_provider: gitalk
-# # !!!重要!!! 请修改下面这些信息为你自己申请的
-# # !!!Important!!! Please modify infos below to yours
+# support provider: disqus, gitment, gitalk, utterances
+comments_provider: gitalk
+# !!!重要!!! 请修改下面这些信息为你自己申请的
+# !!!Important!!! Please modify infos below to yours
 # # https://disqus.com
 # disqus:
 #     username: 
@@ -138,15 +138,15 @@ collections:
 #     oauth:
 #         client_id: d2e1cbbd298958076462
 #         client_secret: b42a4178e5fd4a7cf63189ef4b1453b05c375709
-# # https://github.com/gitalk/gitalk#install
-# gitalk:
-#     owner: mzlogin
-#     repo: blog-comments
-#     clientID: d2e1cbbd298958076462
-#     clientSecret: b42a4178e5fd4a7cf63189ef4b1453b05c375709
+# https://github.com/gitalk/gitalk#install
+gitalk:
+    owner: luokai0223
+    repo: blog-comments
+    clientID: f1ef99706109eaf49d8d
+    clientSecret: 1e04aab4b6475e90d82cb6152304f8c034f4f95b
 # # https://utteranc.es/
-# utterances:
-#     repo: mzlogin/blog-comments
+# # utterances:
+# #     repo: mzlogin/blog-comments
 # # 在使用其它评论组件时可点击显示 Disqus
 # lazy_load_disqus : false
 
