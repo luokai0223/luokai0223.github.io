@@ -2,15 +2,15 @@
 #   Main Configs   #
 # ---------------- #
 baseurl:
-url: https://mazhuang.org
+url: https://luokai0223.github.io/
 date_format: "ordinal"
-title: 码志
-subtitle: "公众号：闷骚的程序员"
-description: "马壮的个人博客，公众号：闷骚的程序员"
-keywords: 码志, Zhuang Ma, mzlogin, mazhuang, 闷骚的程序员
+title: 夜明了
+subtitle: "记录一些思考"
+description: "记录一些思考"
+keywords: 记录
 timezone: Asia/Shanghai
 encoding: "utf-8"
-repository: mzlogin/mzlogin.github.io
+repository: luokai0223/luokai0223.github.io
 # 对 css 和 js 资源的 cdn 加速配置
 cdn:
     jsdelivr:
@@ -37,7 +37,7 @@ components:
     # 修改图片请替换 assets/images/qrcode.jpg
     qrcode:
         enabled: true
-        image_alt: 闷骚的程序员
+        image_alt: 夜明了
     # 维基索引页使用哪种视图，支持 列表（list）/分类（cate）
     wiki:
         view: cate
@@ -51,12 +51,12 @@ highlight_theme: github
 # ---------------- #
 #      Author      #
 # ---------------- #
-author: Zhuang Ma
+author: Luo Kai
 organization: 
 organization_url: 
-github_username: mzlogin
-location: Wuhan, China
-email: chumpma@gmail.com
+github_username: luokai0223
+location: ShenZhen, China
+email: luokai0223@126.com
 
 # ---------------- #
 #    Navigation    #
@@ -124,31 +124,31 @@ collections:
 # ---------------- #
 #      Comments    #
 # ---------------- #
-# support provider: disqus, gitment, gitalk, utterances
-comments_provider: gitalk
-# !!!重要!!! 请修改下面这些信息为你自己申请的
-# !!!Important!!! Please modify infos below to yours
-# https://disqus.com
-disqus:
-    username: 
-# https://imsun.net/posts/gitment-introduction/
-gitment:
-    owner: mzlogin
-    repo: blog-comments
-    oauth:
-        client_id: d2e1cbbd298958076462
-        client_secret: b42a4178e5fd4a7cf63189ef4b1453b05c375709
-# https://github.com/gitalk/gitalk#install
-gitalk:
-    owner: mzlogin
-    repo: blog-comments
-    clientID: d2e1cbbd298958076462
-    clientSecret: b42a4178e5fd4a7cf63189ef4b1453b05c375709
-# https://utteranc.es/
-utterances:
-    repo: mzlogin/blog-comments
-# 在使用其它评论组件时可点击显示 Disqus
-lazy_load_disqus : false
+# # support provider: disqus, gitment, gitalk, utterances
+# comments_provider: gitalk
+# # !!!重要!!! 请修改下面这些信息为你自己申请的
+# # !!!Important!!! Please modify infos below to yours
+# # https://disqus.com
+# disqus:
+#     username: 
+# # https://imsun.net/posts/gitment-introduction/
+# gitment:
+#     owner: mzlogin
+#     repo: blog-comments
+#     oauth:
+#         client_id: d2e1cbbd298958076462
+#         client_secret: b42a4178e5fd4a7cf63189ef4b1453b05c375709
+# # https://github.com/gitalk/gitalk#install
+# gitalk:
+#     owner: mzlogin
+#     repo: blog-comments
+#     clientID: d2e1cbbd298958076462
+#     clientSecret: b42a4178e5fd4a7cf63189ef4b1453b05c375709
+# # https://utteranc.es/
+# utterances:
+#     repo: mzlogin/blog-comments
+# # 在使用其它评论组件时可点击显示 Disqus
+# lazy_load_disqus : false
 
 # ---------------- #
 #      Search      #
@@ -162,11 +162,11 @@ simple_jekyll_search:
 # ---------------- #
 #      Google      #
 # ---------------- #
-google:
-    analytics_id: UA-80669434-1
-    adsense:
-        footer: true
-        sidebar: true 
-        sidebar-detail: true 
-        content_header: false
-        content_footer: false
+# google:
+#     analytics_id: UA-80669434-1
+#     adsense:
+#         footer: true
+#         sidebar: true 
+#         sidebar-detail: true 
+#         content_header: false
+#         content_footer: false
