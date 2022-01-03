@@ -81,10 +81,10 @@
 
   
     {
-      "title"    : "测试",
-      "category" : "pytorch",
+      "title"    : "pytorch源码阅读笔记（1）：目录结构与libtorch编译",
+      "category" : "pytorch源码",
       
-      "url"      : "https://luokai0223.github.io/2022/01/02/test/",
+      "url"      : "https://luokai0223.github.io/2022/01/02/pytorchread-1/",
       "keywords" : "pytorch，libtorch"
     } 
   

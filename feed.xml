@@ -1,1 +1,101 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.9.0">Jekyll</generator><link href="https://luokai0223.github.io/feed.xml" rel="self" type="application/atom+xml" /><link href="https://luokai0223.github.io/" rel="alternate" type="text/html" /><updated>2022-01-03T00:03:14+08:00</updated><id>https://luokai0223.github.io/feed.xml</id><title type="html">夜明了</title><subtitle>记录一些思考</subtitle><author><name>Luo Kai</name></author><entry><title type="html">测试</title><link href="https://luokai0223.github.io/2022/01/02/test/" rel="alternate" type="text/html" title="测试" /><published>2022-01-02T00:00:00+08:00</published><updated>2022-01-02T00:00:00+08:00</updated><id>https://luokai0223.github.io/2022/01/02/test</id><content type="html" xml:base="https://luokai0223.github.io/2022/01/02/test/">&lt;p&gt;aaaaaaaaaaaaaaadddddddddddddddddddddddd&lt;/p&gt;</content><author><name>Luo Kai</name></author><category term="pytorch" /><summary type="html">aaaaaaaaaaaaaaadddddddddddddddddddddddd</summary></entry></feed>
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.9.0">Jekyll</generator><link href="https://luokai0223.github.io/feed.xml" rel="self" type="application/atom+xml" /><link href="https://luokai0223.github.io/" rel="alternate" type="text/html" /><updated>2022-01-03T16:18:16+08:00</updated><id>https://luokai0223.github.io/feed.xml</id><title type="html">夜明了</title><subtitle>记录一些思考</subtitle><author><name>Luo Kai</name></author><entry><title type="html">pytorch源码阅读笔记（1）：目录结构与libtorch编译</title><link href="https://luokai0223.github.io/2022/01/02/pytorchread-1/" rel="alternate" type="text/html" title="pytorch源码阅读笔记（1）：目录结构与libtorch编译" /><published>2022-01-02T00:00:00+08:00</published><updated>2022-01-02T00:00:00+08:00</updated><id>https://luokai0223.github.io/2022/01/02/pytorchread-1</id><content type="html" xml:base="https://luokai0223.github.io/2022/01/02/pytorchread-1/">&lt;p&gt;最近断断续续看了部分pytorch源代码，整理一下零散的笔记&lt;br /&gt;
+——————&lt;/p&gt;
+
+&lt;h2 id=&quot;pytorch代码目录结构&quot;&gt;pytorch代码目录结构&lt;/h2&gt;
+&lt;p&gt;&lt;em&gt;此目录描述边看边更新，pytorch项目庞大，预计看的方式整体为 C++到 Python，按照主要核心功能从整体到局部，整理笔记的时候 pytorch 最新版本为1.10.1，按照此版本记录&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;参考pytorch官方描述，大致代码结构如下所述：&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;c10 - Core library —— 核心库，包含最基本的功能，aten/src/ATen/core中的代码在逐渐往此处迁移。&lt;/li&gt;
+  &lt;li&gt;aten - PyTorch C++ 张量库，不包括自动梯度支持
+    &lt;ul&gt;
+      &lt;li&gt;aten/src -
+        &lt;ul&gt;
+          &lt;li&gt;aten/src/ATen
+            &lt;ul&gt;
+              &lt;li&gt;aten/src/ATen/core - 核心函数库，逐步往c10迁移中。&lt;/li&gt;
+              &lt;li&gt;aten/src/ATen/native - 原生算子库，大部分CPU算子在此一级目录下，除了一些有特殊编译需求的算子在cpu目录下
+                &lt;ul&gt;
+                  &lt;li&gt;aten/src/ATen/native/cpu - 某些需要类似AVX等特殊指令集编译的cpu算子实现&lt;/li&gt;
+                  &lt;li&gt;aten/src/ATen/native/cuda - CUDA 算子&lt;/li&gt;
+                  &lt;li&gt;aten/src/ATen/native/sparse - CPU 和 CUDA 的稀疏矩阵算子&lt;/li&gt;
+                  &lt;li&gt;aten/src/ATen/native/mkl，aten/src/ATen/native/mkldnn，…… - 如文件夹描述，对应的算子&lt;/li&gt;
+                &lt;/ul&gt;
+              &lt;/li&gt;
+            &lt;/ul&gt;
+          &lt;/li&gt;
+        &lt;/ul&gt;
+      &lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;torch - 实际的PyTorch库，除了torch/csrc之外的都是Python模块
+    &lt;ul&gt;
+      &lt;li&gt;torch/csrc - Python 和 C++ 混编库
+        &lt;ul&gt;
+          &lt;li&gt;torch/csrc/jit - TorchScript JIT
+frontend&lt;/li&gt;
+          &lt;li&gt;torch/csrc/autograd - 自动微分实现&lt;/li&gt;
+          &lt;li&gt;torch/csrc/api - The PyTorch C++ frontend.&lt;/li&gt;
+          &lt;li&gt;torch/csrc/distributed -&lt;/li&gt;
+        &lt;/ul&gt;
+      &lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;tools - 代码生成模块，pytorch很多代码是在编译时自动生成的&lt;/li&gt;
+  &lt;li&gt;test - Python前端单元测试模块，C++前端的单元测试在其他文件夹&lt;/li&gt;
+  &lt;li&gt;caffe2 - Caffe2 库合并入pytorch，具体合并了哪些官方说的太抽象，以后看到了再更新&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2 id=&quot;pytorch-c-模块的编译&quot;&gt;pytorch C++ 模块的编译&lt;/h2&gt;
+&lt;p&gt;&lt;em&gt;pytorch 官方有单独打包的 C++ 库libtorch，参照官方提供的libtorch库编译方式&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;首先clone仓库，由于会下载很多第三方仓库，需要较长时间，并且克隆失败的库可能会导致编译失败:&lt;/p&gt;
+&lt;div class=&quot;language-shell highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;git clone &lt;span class=&quot;nt&quot;&gt;-b&lt;/span&gt; master &lt;span class=&quot;nt&quot;&gt;--recurse-submodule&lt;/span&gt; https://github.com/pytorch/pytorch.git
+&lt;span class=&quot;nb&quot;&gt;mkdir &lt;/span&gt;pytorch-build
+&lt;span class=&quot;nb&quot;&gt;cd &lt;/span&gt;pytorch-build
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+&lt;p&gt;直接使用官方的cmake文件编译就可以，即使是单独编译 C++ 模块也需要安装Python，因为有大量代码是通过Python脚本生成，看源码之前还需要把编译完成后生成的cpp文件复制到源码目录&lt;br /&gt;
+我使用的cmake命令：&lt;/p&gt;
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;cmake -DBUILD_SHARED_LIBS:BOOL=ON -DCMAKE_BUILD_TYPE:STRING=Release -DPYTHON_EXECUTABLE:PATH=`which python3` -DCMAKE_INSTALL_PREFIX:PATH=/data/build/pytorch-read/pytorch-install ../pytorch
+
+cmake --build . --target install -j8
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;测试一下C++库的使用:&lt;/p&gt;
+&lt;div class=&quot;language-cpp highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;cp&quot;&gt;#include &amp;lt;torch/torch.h&amp;gt;
+#include &amp;lt;iostream&amp;gt;
+&lt;/span&gt;
+&lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;main&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;torch&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Tensor&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;tensor1&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;torch&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;eye&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;3&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;torch&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Tensor&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;tensor2&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;torch&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;exp&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;tensor1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;torch&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;add&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;tensor1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;tensor2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;std&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;cout&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;lt;&amp;lt;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;tensor2&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;lt;&amp;lt;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;std&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;endl&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+&lt;p&gt;cmake配置文件（这东西写起来真的是费劲）:&lt;/p&gt;
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;cmake_minimum_required(VERSION 3.0 FATAL_ERROR)
+project(main)
+
+cmake_policy(SET CMP0074 NEW) 
+set(CMAKE_PREFIX_PATH &quot;/data/build/pytorch-read/pytorch-install&quot;)
+set(CUDA_TOOLKIT_ROOT_DIR &quot;/usr/local/cuda&quot;)
+set(CMAKE_CUDA_COMPILER &quot;/usr/local/cuda/bin/nvcc&quot;)
+find_package(Torch REQUIRED)
+set(CMAKE_CXX_FLAGS &quot;${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}&quot;)
+
+add_executable(main main.cpp)
+target_include_directories(main PUBLIC
+&quot;${TORCH_INCLUDE_DIRS}&quot;
+)
+target_link_libraries(main
+&quot;${TORCH_LIBRARIES}&quot;
+&quot;/usr/lib/x86_64-linux-gnu/libpthread.so&quot; 
+&quot;/usr/lib/x86_64-linux-gnu/libm.so&quot; 
+&quot;/usr/lib/x86_64-linux-gnu/libdl.so&quot;
+&quot;/opt/intel/mkl/lib/intel64/libmkl_intel_lp64.so&quot;  
+&quot;/opt/intel/mkl/lib/intel64/libmkl_gnu_thread.so&quot; 
+&quot;/opt/intel/mkl/lib/intel64/libmkl_core.so&quot;
+)
+set_property(TARGET main PROPERTY CXX_STANDARD 14)
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+&lt;p&gt;可能有一些库的依赖问题，安装对应的库即可。&lt;/p&gt;</content><author><name>Luo Kai</name></author><category term="pytorch源码" /><summary type="html">最近断断续续看了部分pytorch源代码，整理一下零散的笔记 ——————</summary></entry></feed>
