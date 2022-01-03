@@ -12,7 +12,7 @@
   
   
     {
-      "title"    : "About",
+      "title"    : "美妙人生的关键在于你能迷上什么东西",
       "url"      : "https://luokai0223.github.io/about/",
       "keywords" : "记录一些思考"
     } ,
@@ -85,6 +85,14 @@
       "category" : "pytorch源码",
       
       "url"      : "https://luokai0223.github.io/2022/01/02/pytorchread-1/",
+      "keywords" : "pytorch，libtorch"
+    } ,
+  
+    {
+      "title"    : "pytorch源码阅读笔记（2）：operators算子——native算子调用过程",
+      "category" : "pytorch源码",
+      
+      "url"      : "https://luokai0223.github.io/2022/01/03/pytorchread-2/",
       "keywords" : "pytorch，libtorch"
     } 
   
