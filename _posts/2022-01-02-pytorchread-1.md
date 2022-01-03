@@ -13,7 +13,7 @@ keywords: pytorch，libtorch
 *此目录描述边看边更新，pytorch项目庞大，预计看的方式整体为 C++到 Python，按照主要核心功能从整体到局部，整理笔记的时候 pytorch 最新版本为1.10.1，按照此版本记录*
 
 参考pytorch官方描述，大致代码结构如下所述：
-* c10 - Core library —— 核心库，包含最基本的功能，aten/src/ATen/core中的代码在逐渐往此处迁移。
+* c10 - Core library —— 核心库，包含最基本的功能，aten/src/ATen/core中的代码在逐渐往此处迁移
 * aten - PyTorch C++ 张量库，不包括自动梯度支持
   * aten/src - 
     * aten/src/ATen
