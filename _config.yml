@@ -163,7 +163,7 @@ simple_jekyll_search:
 #      Google      #
 # ---------------- #
 google:
-    analytics_id: 298371048
+    analytics_id: UA-67470195-2
     adsense:
         footer: true
 #         sidebar: true 
