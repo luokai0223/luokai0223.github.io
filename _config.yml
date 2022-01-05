@@ -162,10 +162,10 @@ simple_jekyll_search:
 # ---------------- #
 #      Google      #
 # ---------------- #
-# google:
-#     analytics_id: UA-80669434-1
-#     adsense:
-#         footer: true
+google:
+    analytics_id: 298371048
+    adsense:
+        footer: true
 #         sidebar: true 
 #         sidebar-detail: true 
 #         content_header: false
