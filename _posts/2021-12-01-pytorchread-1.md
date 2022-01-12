@@ -1,18 +1,18 @@
 ---
 layout: post
-title: pytorch源码阅读笔记（1）：目录结构与libtorch编译
-categories: [pytorch源码]
-description: 看了一部分pytorch源码，总结记录一下
-keywords: pytorch，libtorch
+title: PyTorch源码阅读笔记（1）：目录结构与libtorch编译
+categories: [PyTorch源码]
+description: 看了一部分PyTorch源码，总结记录一下
+keywords: PyTorch，libtorch
 ---
 
-最近断断续续看了部分pytorch源代码，整理一下零散的笔记  
+最近断断续续看了部分PyTorch源代码，整理一下零散的笔记  
 ——————
 
-## pytorch代码目录结构
-*此目录描述边看边更新，pytorch项目庞大，预计看的方式整体为 C++到 Python，按照主要核心功能从整体到局部，整理笔记的时候 pytorch 最新版本为1.10.1，按照此版本记录*
+## PyTorch代码目录结构
+*此目录描述边看边更新，PyTorch项目庞大，预计看的方式整体为 C++到 Python，按照主要核心功能从整体到局部，整理笔记的时候 PyTorch 最新版本为1.10.1，按照此版本记录*
 
-参考pytorch官方描述，大致代码结构如下所述：
+参考PyTorch官方描述，大致代码结构如下所述：
 * c10 - Core library —— 核心库，包含最基本的功能，aten/src/ATen/core中的代码在逐渐往此处迁移
 * aten - PyTorch C++ 张量库，不包括自动梯度支持
   * aten/src - 
@@ -30,23 +30,23 @@ keywords: pytorch，libtorch
     * torch/csrc/autograd - 自动微分实现
     * torch/csrc/api - The PyTorch C++ frontend.
     * torch/csrc/distributed - 
-* tools - 代码生成模块，pytorch很多代码是在编译时自动生成的
+* tools - 代码生成模块，PyTorch很多代码是在编译时自动生成的
 * test - Python前端单元测试模块，C++前端的单元测试在其他文件夹
-* caffe2 - Caffe2 库合并入pytorch，具体合并了哪些官方说的太抽象，以后看到了再更新
+* caffe2 - Caffe2 库合并入PyTorch，具体合并了哪些官方说的太抽象，以后看到了再更新
 
-## pytorch C++ 模块的编译
-*pytorch 官方有单独打包的 C++ 库libtorch，参照官方提供的libtorch库编译方式*  
+## PyTorch C++ 模块的编译
+*PyTorch 官方有单独打包的 C++ 库libtorch，参照官方提供的libtorch库编译方式*  
 
 首先clone仓库，由于会下载很多第三方仓库，需要较长时间，并且克隆失败的库可能会导致编译失败:
 ```shell
-git clone -b master --recurse-submodule https://github.com/pytorch/pytorch.git
-mkdir pytorch-build
-cd pytorch-build
+git clone -b master --recurse-submodule https://github.com/PyTorch/PyTorch.git
+mkdir PyTorch-build
+cd PyTorch-build
 ```
 直接使用官方的cmake文件编译就可以，即使是单独编译 C++ 模块也需要安装Python，因为有大量代码是通过Python脚本生成，看源码之前还需要把编译完成后生成的cpp文件复制到源码目录  
 我使用的cmake命令：
 ```
-cmake -DBUILD_SHARED_LIBS:BOOL=ON -DCMAKE_BUILD_TYPE:STRING=Release -DPYTHON_EXECUTABLE:PATH=`which python3` -DCMAKE_INSTALL_PREFIX:PATH=/data/build/pytorch-read/pytorch-install ../pytorch
+cmake -DBUILD_SHARED_LIBS:BOOL=ON -DCMAKE_BUILD_TYPE:STRING=Release -DPYTHON_EXECUTABLE:PATH=`which python3` -DCMAKE_INSTALL_PREFIX:PATH=/data/build/PyTorch-read/PyTorch-install ../PyTorch
 
 cmake --build . --target install -j8
 ```
@@ -69,7 +69,7 @@ cmake_minimum_required(VERSION 3.0 FATAL_ERROR)
 project(main)
 
 cmake_policy(SET CMP0074 NEW) 
-set(CMAKE_PREFIX_PATH "/data/build/pytorch-read/pytorch-install")
+set(CMAKE_PREFIX_PATH "/data/build/PyTorch-read/PyTorch-install")
 set(CUDA_TOOLKIT_ROOT_DIR "/usr/local/cuda")
 set(CMAKE_CUDA_COMPILER "/usr/local/cuda/bin/nvcc")
 find_package(Torch REQUIRED)

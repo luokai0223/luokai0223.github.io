@@ -1,28 +1,46 @@
 ---
 layout: post
-title: pytorch源码阅读笔记（2）：operators算子——native算子注册
-categories: [pytorch源码]
-description: 看了一部分pytorch源码，总结记录一下
-keywords: pytorch，libtorch
+title: PyTorch源码阅读笔记（3）：operators算子——native算子注册过程
+categories: [PyTorch源码]
+description: 看了一部分PyTorch源码，总结记录一下
+keywords: PyTorch，libtorch
 ---
-
+最开始想要看看PyTorch源码是从需要自定义算子开始，所以先看看PyTorch的native算子（翻译是原生算子？因为最终的具体实现都是和平台相关的，比如CUDA代码）是如何被注册以及调用的。  
 ——————  
 
 ## 算子定义
+按照官方描述，所有的原生算子（函数）都定义在aten/src/ATen/native/native_functions.yaml文件里面，以一个add算子为例：  
+```xml
+- func: add.out(Tensor self, Tensor other, *, Scalar alpha=1, Tensor(a!) out) -> Tensor(a!)
+  device_check: NoCheck   # TensorIterator
+  structured: True
+  structured_inherits: TensorIteratorBase
+  dispatch:
+    CPU, CUDA: add_out
+    SparseCPU: add_out_sparse_cpu
+    SparseCUDA: add_out_sparse_cuda
+    SparseCsrCPU: add_out_sparse_csr_cpu
+    SparseCsrCUDA: add_out_sparse_csr_cuda
+    MkldnnCPU: mkldnn_add_out
+```
+配置文件中定义了算子的输入输出、支持平台等信息，具体内容官方有详细描述。  
+
+## 算子信息注册
 首先运行如下宏：
 ```cpp
 // TORCH_LIBRARY(aten, m) 
-// 为什么要多写一句static void TORCH_LIBRARY_init_aten(torch::Library&); ？
 // 宏展开后：
+// 为什么要多写一句static void TORCH_LIBRARY_init_aten(torch::Library&); ？
 static void TORCH_LIBRARY_init_aten(torch::Library&); 
 static const torch::detail::TorchLibraryInit TORCH_LIBRARY_static_init_aten( torch::Library::DEF, &TORCH_LIBRARY_init_aten, "aten", c10::nullopt, __FILE__, __LINE__); 
 void TORCH_LIBRARY_init_aten(torch::Library& m)
 {
-// ...
+// ......
  m.def("add.out(Tensor self, Tensor other, *, Scalar alpha=1, Tensor(a!) out) -> Tensor(a!)");
-// ...
+// ......
+}
 ```
-其中声明TORCH_LIBRARY_static_init_aten时，TORCH_LIBRARY_static_init_aten构造函数会在初始化成员变量Library lib_后运行TORCH_LIBRARY_init_aten(lib_)，执行函数内的一大串m.def(...)。
+其中声明TORCH_LIBRARY_static_init_aten时，TORCH_LIBRARY_static_init_aten构造函数会在初始化成员变量Library lib_后运行TORCH_LIBRARY_init_aten(lib_)，执行函数内的一大串m.def(...)：
 ```cpp
 class TorchLibraryInit final {
  private:
@@ -59,23 +77,10 @@ Library 类内有多个def函数模板，这里会按如下方式调用：
 // ...
 #define DEF_PRELUDE "def(\"", schema.operator_name(), "\"): "
 Library& Library::_def(c10::FunctionSchema&& schema, c10::OperatorName* out_name) & {
-  TORCH_CHECK(kind_ == DEF || kind_ == FRAGMENT,
-    DEF_PRELUDE,
-    "Cannot define an operator inside of a ", toString(kind_), " block.  "
-    "All def()s should be placed in the (unique) TORCH_LIBRARY block for their namespace.  ",
-    ERROR_CONTEXT
-  );
-  TORCH_INTERNAL_ASSERT(ns_.has_value(), ERROR_CONTEXT);
-  TORCH_INTERNAL_ASSERT(!dispatch_key_.has_value(), ERROR_CONTEXT);
+// check...
   auto ns_opt = schema.getNamespace();
   if (ns_opt.has_value()) {
-    TORCH_CHECK(*ns_opt == *ns_,
-      "Explicitly provided namespace (", *ns_opt, ") in schema string "
-      "does not match namespace of enclosing ", toString(kind_), " block (", *ns_, ").  "
-      "Move this definition to the (unique) TORCH_LIBRARY block corresponding to this namespace "
-      "(and consider deleting the namespace from your schema string.)  ",
-      ERROR_CONTEXT
-    );
+    // check...
   } else {
     bool b = schema.setNamespaceIfNotSet(ns_->c_str());
     TORCH_INTERNAL_ASSERT(b, ERROR_CONTEXT);
@@ -94,7 +99,7 @@ Library& Library::_def(c10::FunctionSchema&& schema, c10::OperatorName* out_name
 #undef DEF_PRELUDE
 // ...
 ```
-然后调用Dispatcher单例执行registerDef函数：
+上面代码中的c10::Dispatcher::singleton()会返回一个static Dispatcher实例（这是设计模式里面的单例模式，PyTorch 中大量地方使用了单例模式），然后调用Dispatcher单例执行registerDef函数：
 ```cpp
 // ...
 RegistrationHandleRAII Dispatcher::registerDef(FunctionSchema schema, std::string debug) {
@@ -103,7 +108,6 @@ RegistrationHandleRAII Dispatcher::registerDef(FunctionSchema schema, std::strin
 
   OperatorName op_name = schema.operator_name();
   auto op = findOrRegisterName_(op_name);
-// ...
 }
 ```
 findOrRegisterName_函数首先调用findOp函数，在该函数内，调用Dispatcher单例的成员变量operatorLookupTable_的read方法：
@@ -143,8 +147,10 @@ operatorLookupTable_的定义为：
 #else
   RWSafeLeftRightWrapper<ska::flat_hash_map<OperatorName, OperatorHandle>> operatorLookupTable_;
 ```
-LeftRight的大概逻辑是给任意的数据结构生成两份实例左和右，同时存在读写的时候，读左边的写右边的，写入完成后读取换到右边，当左边的所有读结束后，右边的写入再同步到左边，这种并发控制方式实现了零等待的读操作。  
-read传入的lambda函数在flat_hash_map哈希表中搜索算子名称，搜索不到返回空指针，回到findOrRegisterName_函数，调用operatorLookupTable_的write函数写入OperatorName和OperatorHandle的键值对，findOrRegisterName_函数最终返回一个OperatorHandle，继续执行registerDef：
+LeftRight的大概逻辑是给任意的数据结构生成两份实例左和右，同时存在读写的时候，读左边的写右边的，写入完成后读取换到右边，当左边的所有读结束后，右边的写入再同步到左边，这种并发控制方式实现了零等待的读操作（官方给的论文地址：[Brief Announcement: Left-Right - A Concurrency
+Control Technique with Wait-Free Population Oblivious
+Reads](https://hal.archives-ouvertes.fr/hal-01207881/document)）。  
+read传入的lambda函数在flat_hash_map哈希表（一种哈希表实现：[A very fast hashtable](https://github.com/skarupke/flat_hash_map/blob/master/flat_hash_map.hpp)）中搜索算子名称，搜索不到则返回空指针，回到findOrRegisterName_函数，调用operatorLookupTable_的write函数写入OperatorName和OperatorHandle的键值对，findOrRegisterName_函数最终返回一个OperatorHandle，继续执行registerDef：
 ```cpp
 RegistrationHandleRAII Dispatcher::registerDef(FunctionSchema schema, std::string debug) {
   // we need a lock to avoid concurrent writes
@@ -152,10 +158,9 @@ RegistrationHandleRAII Dispatcher::registerDef(FunctionSchema schema, std::strin
 
   OperatorName op_name = schema.operator_name();
   auto op = findOrRegisterName_(op_name);
+  // 继续往下执行
+  // check...
 
-  TORCH_CHECK(op.operatorDef_->def_count == 0, "Tried to register an operator (", schema, ") with the same name and overload name multiple times.",
-                                                    " Each overload's schema should only be registered with a single call to def().",
-                                                    " Duplicate registration: ", debug, ". Original registration: ", op.operatorDef_->op.debug());
   op.operatorDef_->op.registerSchema(std::move(schema), std::move(debug));
   listeners_->callOnOperatorRegistered(op);
 
@@ -186,34 +191,7 @@ void OperatorEntry::registerSchema(FunctionSchema&& schema, std::string&& debug)
   schema_ = AnnotatedSchema(std::move(schema), std::move(debug));
 }
 ```
-impl::OperatorEntry op有成员变量执行DispatchKeyExtractor dispatchKeyExtractor_，执行dispatchKeyExtractor_的registerSchema函数：
-```cpp
-// ...
-  void registerSchema(const FunctionSchema& schema) {
-    TORCH_INTERNAL_ASSERT(dispatch_arg_indices_reverse_.is_entirely_unset());
-    dispatch_arg_indices_reverse_ = makeBitsetForDispatchArgs(schema);
-  }
-// ...
-  static c10::utils::bitset makeBitsetForDispatchArgs(const FunctionSchema& schema) {
-    TORCH_CHECK(schema.arguments().size() <= c10::utils::bitset::NUM_BITS(),
-        "The function schema has ", schema.arguments().size(),
-        " arguments but this PyTorch build only supports ", c10::utils::bitset::NUM_BITS());
-    c10::utils::bitset dispatch_arg_indices_reverse;
-    for (const auto index : c10::irange(schema.arguments().size())) {
-      if (schema.arguments()[index].type()->isSubtypeOf(*TensorType::get()) ||
-          schema.arguments()[index].type()->isSubtypeOf(
-              *ListType::ofTensors()) ||
-          schema.arguments()[index].type()->isSubtypeOf(
-              *ListType::ofOptionalTensors()) ||
-          schema.arguments()[index].type()->isSubtypeOf(
-              *OptionalType::ofTensor())) {
-        dispatch_arg_indices_reverse.set(schema.arguments().size() - 1 - index);
-      }
-    }
-    return dispatch_arg_indices_reverse;
-  }
-```
-更新dispatchKeyExtractor_的成员变量dispatch_arg_indices_reverse_，schema的成员arguments_类型为std::vector<Argument>，在makeBitsetForDispatchArgs函数内，遍历arguments_，符合类型判断后，传入逆序顺序值作为参数，调用set函数：
+impl::OperatorEntry op有成员变量执行DispatchKeyExtractor dispatchKeyExtractor_，执行dispatchKeyExtractor_的registerSchema函数,更新dispatchKeyExtractor_的成员变量dispatch_arg_indices_reverse_，schema的成员arguments_类型为std::vector<Argument>，在makeBitsetForDispatchArgs函数内，遍历arguments_，符合类型判断后，传入逆序顺序值作为参数，调用set函数：
 ```cpp
 struct TORCH_API DispatchKeyExtractor final {
 // ...
@@ -221,7 +199,7 @@ struct TORCH_API DispatchKeyExtractor final {
     TORCH_INTERNAL_ASSERT(dispatch_arg_indices_reverse_.is_entirely_unset());
     dispatch_arg_indices_reverse_ = makeBitsetForDispatchArgs(schema);
   }
-//...
+
 private:
   static c10::utils::bitset makeBitsetForDispatchArgs(const FunctionSchema& schema) {
     TORCH_CHECK(schema.arguments().size() <= c10::utils::bitset::NUM_BITS(),
@@ -241,9 +219,8 @@ private:
     }
     return dispatch_arg_indices_reverse;
   }
-// ...
+
 c10::utils::bitset dispatch_arg_indices_reverse_;
-// ...
 ```
 dispatch_arg_indices_reverse的set函数，bitset_初始为0，每次生成一个1进行左移index位的运算，然后与bitset_进行按位或更新，这样每个符合类型的参数的逆序位置的bit值都为1，目的是"This avoids having to iterate over the stack to find all the tensors":
 ```cpp
