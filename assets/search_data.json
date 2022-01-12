@@ -84,16 +84,16 @@
       "title"    : "pytorch源码阅读笔记（1）：目录结构与libtorch编译",
       "category" : "pytorch源码",
       
-      "url"      : "https://luokai0223.github.io/2022/01/02/pytorchread-1/",
+      "url"      : "https://luokai0223.github.io/2021/12/01/pytorchread-1/",
       "keywords" : "pytorch，libtorch"
     } ,
   
     {
-      "title"    : "pytorch源码阅读笔记（2）：operators算子——native算子调用过程",
+      "title"    : "pytorch源码阅读笔记（2）：dispatcher",
       "category" : "pytorch源码",
       
-      "url"      : "https://luokai0223.github.io/2022/01/03/pytorchread-2/",
-      "keywords" : "pytorch，libtorch"
+      "url"      : "https://luokai0223.github.io/2021/12/10/pytorchread-2/",
+      "keywords" : "pytorch，libtorch, dispatcher"
     } 
   
 ]
