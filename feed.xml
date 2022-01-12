@@ -1,8 +1,8 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.9.0">Jekyll</generator><link href="https://luokai0223.github.io/feed.xml" rel="self" type="application/atom+xml" /><link href="https://luokai0223.github.io/" rel="alternate" type="text/html" /><updated>2022-01-12T14:53:08+08:00</updated><id>https://luokai0223.github.io/feed.xml</id><title type="html">夜明了</title><subtitle>记录一些思考</subtitle><author><name>Luo Kai</name></author><entry><title type="html">pytorch源码阅读笔记（2）：dispatcher</title><link href="https://luokai0223.github.io/2021/12/10/pytorchread-2/" rel="alternate" type="text/html" title="pytorch源码阅读笔记（2）：dispatcher" /><published>2021-12-10T00:00:00+08:00</published><updated>2021-12-10T00:00:00+08:00</updated><id>https://luokai0223.github.io/2021/12/10/pytorchread-2</id><content type="html" xml:base="https://luokai0223.github.io/2021/12/10/pytorchread-2/">&lt;p&gt;关于 pytorch 的 dispatcher ，Pytorch 的核心作者之一 Edward Z Yang 有过介绍：&lt;a href=&quot;http://blog.ezyang.com/2020/09/lets-talk-about-the-pytorch-dispatcher/&quot;&gt;Let’s talk about the PyTorch dispatcher&lt;/a&gt;，本篇笔记内容是自己根据大佬的讲解进行学习的一些记录。&lt;br /&gt;
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.9.0">Jekyll</generator><link href="https://luokai0223.github.io/feed.xml" rel="self" type="application/atom+xml" /><link href="https://luokai0223.github.io/" rel="alternate" type="text/html" /><updated>2022-01-12T20:37:05+08:00</updated><id>https://luokai0223.github.io/feed.xml</id><title type="html">夜明了</title><subtitle>记录一些思考</subtitle><author><name>Luo Kai</name></author><entry><title type="html">PyTorch源码阅读笔记（2）：dispatcher</title><link href="https://luokai0223.github.io/2021/12/10/pytorchread-2/" rel="alternate" type="text/html" title="PyTorch源码阅读笔记（2）：dispatcher" /><published>2021-12-10T00:00:00+08:00</published><updated>2021-12-10T00:00:00+08:00</updated><id>https://luokai0223.github.io/2021/12/10/pytorchread-2</id><content type="html" xml:base="https://luokai0223.github.io/2021/12/10/pytorchread-2/">&lt;p&gt;关于 PyTorch 的 dispatcher ，PyTorch 的核心作者之一 Edward Z Yang 有过介绍：&lt;a href=&quot;http://blog.ezyang.com/2020/09/lets-talk-about-the-PyTorch-dispatcher/&quot;&gt;Let’s talk about the PyTorch dispatcher&lt;/a&gt;，本篇笔记内容是自己根据大佬的讲解进行学习的一些记录。&lt;br /&gt;
 ——————&lt;/p&gt;
 
 &lt;h2 id=&quot;什么是dispatcher&quot;&gt;什么是dispatcher&lt;/h2&gt;
-&lt;p&gt;Pytorch 作为多平台的神经网络框架，需要实现这样一种功能：每个通用的算子都要实现一些相同的 api，比如前传和反传，这些相同的api在不同的硬件设备会有不同的代码实现，CPU下可能要用到MKL，GPU下是CUDA，各个厂商的NPU加速卡也可能有不同的底层代码。Pytorch 需要根据不同的硬件设备和使用场景，调用对应的函数实现，dispatcher 能够实现这个功能。&lt;br /&gt;
+&lt;p&gt;PyTorch 作为多平台的神经网络框架，需要实现这样一种功能：每个通用的算子都要实现一些相同的 api，比如前传和反传，这些相同的api在不同的硬件设备会有不同的代码实现，CPU下可能要用到MKL，GPU下是CUDA，各个厂商的NPU加速卡也可能有不同的底层代码。PyTorch 需要根据不同的硬件设备和使用场景，调用对应的函数实现，dispatcher 能够实现这个功能。&lt;br /&gt;
 对于每个operator，dispatcher都会维护一个函数指针表，为每个dispatch key提供对应的实现。&lt;/p&gt;
 
 &lt;h2 id=&quot;dispatcher-key&quot;&gt;dispatcher key&lt;/h2&gt;
@@ -39,7 +39,7 @@
 
 &lt;h2 id=&quot;key查找&quot;&gt;key查找&lt;/h2&gt;
 &lt;p&gt;DispatchKeySet里有多个key时，由于 dispatch key 的数字越大优先级越高，则比特位里面最左边的key优先级最高，每次执行都需要查找最高位的位置。&lt;br /&gt;
-最简单的方法自然是从左往右遍历，直到遇见比特位为1的值。当然大佬们不可能这么简单，Pytorch 用了 LLVM 项目提供的一种二分查找的方式计算最高位：&lt;/p&gt;
+最简单的方法自然是从左往右遍历，直到遇见比特位为1的值。当然大佬们不可能这么简单，PyTorch 用了 LLVM 项目提供的一种二分查找的方式计算最高位：&lt;/p&gt;
 &lt;div class=&quot;language-cpp highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;c1&quot;&gt;// c10/core/DispatchKeySet.h&lt;/span&gt;
   &lt;span class=&quot;n&quot;&gt;DispatchKey&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;highestPriorityTypeId&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;const&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
     &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;static_cast&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;DispatchKey&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;64&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;llvm&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;countLeadingZeros&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;repr_&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;));&lt;/span&gt;
@@ -66,19 +66,19 @@
   &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
 &lt;span class=&quot;p&quot;&gt;};&lt;/span&gt;
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-&lt;p&gt;Val为传入的repr_，循环内的Shift值依次为32、16、8、4、2、1（二进制值分别为100000，10000，1000， 100，10，1），每次循环把Val右移Shift位：
-如果右移后的值不为0的话，说明还存在值为1的比特位，把右移后的值赋予Val，继续下一次右移；
-如果右移后的值为0的话，说明右移的位数范围内没有1，使用按位或保存至ZeroBits，继续下一次右移。
+&lt;p&gt;Val为传入的repr_，循环内的Shift值依次为32、16、8、4、2、1（二进制值分别为100000，10000，1000， 100，10，1），每次循环把Val右移Shift位：&lt;br /&gt;
+如果右移后的值不为0的话，说明还存在值为1的比特位，把右移后的值赋予Val，继续下一次右移；&lt;br /&gt;
+如果右移后的值为0的话，说明右移的位数范围内没有1，使用按位或保存至ZeroBits，继续下一次右移。&lt;br /&gt;
 这样循环的结果则是最高位前面的0的个数。相比遍历查找，时间复杂度由O(N
 )下降至O(logn)。&lt;/p&gt;
 
-&lt;p&gt;以上便是 dispatcher 较基本的功能和实现，最开头那篇博文关于 dispatcher 实现的描述内容不止这些，不过由于 dispatcher 是一个“横切关注点”，涉及到很多模块，后续就从对应模块出发，涉及到了相关功能再补充。&lt;/p&gt;</content><author><name>Luo Kai</name></author><category term="pytorch源码" /><summary type="html">关于 pytorch 的 dispatcher ，Pytorch 的核心作者之一 Edward Z Yang 有过介绍：Let’s talk about the PyTorch dispatcher，本篇笔记内容是自己根据大佬的讲解进行学习的一些记录。 ——————</summary></entry><entry><title type="html">pytorch源码阅读笔记（1）：目录结构与libtorch编译</title><link href="https://luokai0223.github.io/2021/12/01/pytorchread-1/" rel="alternate" type="text/html" title="pytorch源码阅读笔记（1）：目录结构与libtorch编译" /><published>2021-12-01T00:00:00+08:00</published><updated>2021-12-01T00:00:00+08:00</updated><id>https://luokai0223.github.io/2021/12/01/pytorchread-1</id><content type="html" xml:base="https://luokai0223.github.io/2021/12/01/pytorchread-1/">&lt;p&gt;最近断断续续看了部分pytorch源代码，整理一下零散的笔记&lt;br /&gt;
+&lt;p&gt;以上便是 dispatcher 较基本的功能和实现，最开头那篇博文关于 dispatcher 实现的描述内容不止这些，不过由于 dispatcher 是一个“横切关注点”，涉及到很多模块，后续就从对应模块出发，涉及到了相关功能再补充。&lt;/p&gt;</content><author><name>Luo Kai</name></author><category term="PyTorch源码" /><summary type="html">关于 PyTorch 的 dispatcher ，PyTorch 的核心作者之一 Edward Z Yang 有过介绍：Let’s talk about the PyTorch dispatcher，本篇笔记内容是自己根据大佬的讲解进行学习的一些记录。 ——————</summary></entry><entry><title type="html">PyTorch源码阅读笔记（1）：目录结构与libtorch编译</title><link href="https://luokai0223.github.io/2021/12/01/pytorchread-1/" rel="alternate" type="text/html" title="PyTorch源码阅读笔记（1）：目录结构与libtorch编译" /><published>2021-12-01T00:00:00+08:00</published><updated>2021-12-01T00:00:00+08:00</updated><id>https://luokai0223.github.io/2021/12/01/pytorchread-1</id><content type="html" xml:base="https://luokai0223.github.io/2021/12/01/pytorchread-1/">&lt;p&gt;最近断断续续看了部分PyTorch源代码，整理一下零散的笔记&lt;br /&gt;
 ——————&lt;/p&gt;
 
-&lt;h2 id=&quot;pytorch代码目录结构&quot;&gt;pytorch代码目录结构&lt;/h2&gt;
-&lt;p&gt;&lt;em&gt;此目录描述边看边更新，pytorch项目庞大，预计看的方式整体为 C++到 Python，按照主要核心功能从整体到局部，整理笔记的时候 pytorch 最新版本为1.10.1，按照此版本记录&lt;/em&gt;&lt;/p&gt;
+&lt;h2 id=&quot;pytorch代码目录结构&quot;&gt;PyTorch代码目录结构&lt;/h2&gt;
+&lt;p&gt;&lt;em&gt;此目录描述边看边更新，PyTorch项目庞大，预计看的方式整体为 C++到 Python，按照主要核心功能从整体到局部，整理笔记的时候 PyTorch 最新版本为1.10.1，按照此版本记录&lt;/em&gt;&lt;/p&gt;
 
-&lt;p&gt;参考pytorch官方描述，大致代码结构如下所述：&lt;/p&gt;
+&lt;p&gt;参考PyTorch官方描述，大致代码结构如下所述：&lt;/p&gt;
 &lt;ul&gt;
   &lt;li&gt;c10 - Core library —— 核心库，包含最基本的功能，aten/src/ATen/core中的代码在逐渐往此处迁移&lt;/li&gt;
   &lt;li&gt;aten - PyTorch C++ 张量库，不包括自动梯度支持
@@ -115,22 +115,22 @@ frontend&lt;/li&gt;
       &lt;/li&gt;
     &lt;/ul&gt;
   &lt;/li&gt;
-  &lt;li&gt;tools - 代码生成模块，pytorch很多代码是在编译时自动生成的&lt;/li&gt;
+  &lt;li&gt;tools - 代码生成模块，PyTorch很多代码是在编译时自动生成的&lt;/li&gt;
   &lt;li&gt;test - Python前端单元测试模块，C++前端的单元测试在其他文件夹&lt;/li&gt;
-  &lt;li&gt;caffe2 - Caffe2 库合并入pytorch，具体合并了哪些官方说的太抽象，以后看到了再更新&lt;/li&gt;
+  &lt;li&gt;caffe2 - Caffe2 库合并入PyTorch，具体合并了哪些官方说的太抽象，以后看到了再更新&lt;/li&gt;
 &lt;/ul&gt;
 
-&lt;h2 id=&quot;pytorch-c-模块的编译&quot;&gt;pytorch C++ 模块的编译&lt;/h2&gt;
-&lt;p&gt;&lt;em&gt;pytorch 官方有单独打包的 C++ 库libtorch，参照官方提供的libtorch库编译方式&lt;/em&gt;&lt;/p&gt;
+&lt;h2 id=&quot;pytorch-c-模块的编译&quot;&gt;PyTorch C++ 模块的编译&lt;/h2&gt;
+&lt;p&gt;&lt;em&gt;PyTorch 官方有单独打包的 C++ 库libtorch，参照官方提供的libtorch库编译方式&lt;/em&gt;&lt;/p&gt;
 
 &lt;p&gt;首先clone仓库，由于会下载很多第三方仓库，需要较长时间，并且克隆失败的库可能会导致编译失败:&lt;/p&gt;
-&lt;div class=&quot;language-shell highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;git clone &lt;span class=&quot;nt&quot;&gt;-b&lt;/span&gt; master &lt;span class=&quot;nt&quot;&gt;--recurse-submodule&lt;/span&gt; https://github.com/pytorch/pytorch.git
-&lt;span class=&quot;nb&quot;&gt;mkdir &lt;/span&gt;pytorch-build
-&lt;span class=&quot;nb&quot;&gt;cd &lt;/span&gt;pytorch-build
+&lt;div class=&quot;language-shell highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;git clone &lt;span class=&quot;nt&quot;&gt;-b&lt;/span&gt; master &lt;span class=&quot;nt&quot;&gt;--recurse-submodule&lt;/span&gt; https://github.com/PyTorch/PyTorch.git
+&lt;span class=&quot;nb&quot;&gt;mkdir &lt;/span&gt;PyTorch-build
+&lt;span class=&quot;nb&quot;&gt;cd &lt;/span&gt;PyTorch-build
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
 &lt;p&gt;直接使用官方的cmake文件编译就可以，即使是单独编译 C++ 模块也需要安装Python，因为有大量代码是通过Python脚本生成，看源码之前还需要把编译完成后生成的cpp文件复制到源码目录&lt;br /&gt;
 我使用的cmake命令：&lt;/p&gt;
-&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;cmake -DBUILD_SHARED_LIBS:BOOL=ON -DCMAKE_BUILD_TYPE:STRING=Release -DPYTHON_EXECUTABLE:PATH=`which python3` -DCMAKE_INSTALL_PREFIX:PATH=/data/build/pytorch-read/pytorch-install ../pytorch
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;cmake -DBUILD_SHARED_LIBS:BOOL=ON -DCMAKE_BUILD_TYPE:STRING=Release -DPYTHON_EXECUTABLE:PATH=`which python3` -DCMAKE_INSTALL_PREFIX:PATH=/data/build/PyTorch-read/PyTorch-install ../PyTorch
 
 cmake --build . --target install -j8
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
@@ -151,7 +151,7 @@ cmake --build . --target install -j8
 project(main)
 
 cmake_policy(SET CMP0074 NEW) 
-set(CMAKE_PREFIX_PATH &quot;/data/build/pytorch-read/pytorch-install&quot;)
+set(CMAKE_PREFIX_PATH &quot;/data/build/PyTorch-read/PyTorch-install&quot;)
 set(CUDA_TOOLKIT_ROOT_DIR &quot;/usr/local/cuda&quot;)
 set(CMAKE_CUDA_COMPILER &quot;/usr/local/cuda/bin/nvcc&quot;)
 find_package(Torch REQUIRED)
@@ -172,4 +172,4 @@ target_link_libraries(main
 )
 set_property(TARGET main PROPERTY CXX_STANDARD 14)
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-&lt;p&gt;可能有一些库的依赖问题，安装对应的库即可。&lt;/p&gt;</content><author><name>Luo Kai</name></author><category term="pytorch源码" /><summary type="html">最近断断续续看了部分pytorch源代码，整理一下零散的笔记 ——————</summary></entry></feed>
+&lt;p&gt;可能有一些库的依赖问题，安装对应的库即可。&lt;/p&gt;</content><author><name>Luo Kai</name></author><category term="PyTorch源码" /><summary type="html">最近断断续续看了部分PyTorch源代码，整理一下零散的笔记 ——————</summary></entry></feed>
