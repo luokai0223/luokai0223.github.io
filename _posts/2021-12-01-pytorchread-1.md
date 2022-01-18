@@ -10,8 +10,6 @@ keywords: PyTorch，libtorch
 ——————
 
 ## PyTorch代码目录结构
-*此目录描述边看边更新，PyTorch项目庞大，预计看的方式整体为 C++到 Python，按照主要核心功能从整体到局部，整理笔记的时候 PyTorch 最新版本为1.10.1，按照此版本记录*
-
 参考PyTorch官方描述，大致代码结构如下所述：
 * c10 - Core library —— 核心库，包含最基本的功能，aten/src/ATen/core中的代码在逐渐往此处迁移
 * aten - PyTorch C++ 张量库，不包括自动梯度支持
@@ -35,7 +33,7 @@ keywords: PyTorch，libtorch
 * caffe2 - Caffe2 库合并入PyTorch，具体合并了哪些官方说的太抽象，以后看到了再更新
 
 ## PyTorch C++ 模块的编译
-*PyTorch 官方有单独打包的 C++ 库libtorch，参照官方提供的libtorch库编译方式*  
+*PyTorch 官方有单独打包的 C++ 库 libtorch，参照官方提供的libtorch库编译方式*  
 
 首先clone仓库，由于会下载很多第三方仓库，需要较长时间，并且克隆失败的库可能会导致编译失败:
 ```shell
