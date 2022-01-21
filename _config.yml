@@ -28,7 +28,7 @@ components:
         start_date: 2020-05-03
     # My Popular Repositories
     side_bar_repo:
-        enabled: true
+        enabled: false
         limit: 5
     # 文章字数统计
     word_count:
@@ -166,8 +166,8 @@ simple_jekyll_search:
 google:
     analytics_id: UA-67470195-2
     adsense:
-        footer: true
-#         sidebar: true 
-#         sidebar-detail: true 
+        # footer: true
+        # sidebar: true 
+        # sidebar-detail: true 
 #         content_header: false
 #         content_footer: false
