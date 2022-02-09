@@ -110,6 +110,14 @@
       
       "url"      : "https://luokai0223.github.io/2022/01/03/pytorchread-3/",
       "keywords" : "PyTorch，libtorch"
+    } ,
+  
+    {
+      "title"    : "遮挡环境下的面部识别概述",
+      "category" : "论文",
+      
+      "url"      : "https://luokai0223.github.io/2022/02/08/paperread-0/",
+      "keywords" : "CNN, Deep Learning, Face Recognition, Multi-Branch ConvNets"
     } 
   
 ]
