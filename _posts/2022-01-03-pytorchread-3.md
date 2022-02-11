@@ -1,6 +1,6 @@
 ---
 layout: post
-title: PyTorch源码阅读笔记（3）：operators算子——native算子注册
+title: PyTorch源码阅读笔记（3）：operators算子 —— native算子注册
 categories: [PyTorch源码]
 description: 看了一部分PyTorch源码，总结记录一下
 keywords: PyTorch，libtorch
