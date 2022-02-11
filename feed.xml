@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.9.0">Jekyll</generator><link href="https://luokai0223.github.io/feed.xml" rel="self" type="application/atom+xml" /><link href="https://luokai0223.github.io/" rel="alternate" type="text/html" /><updated>2022-02-09T10:18:54+08:00</updated><id>https://luokai0223.github.io/feed.xml</id><title type="html">夜明了</title><subtitle>记录一些思考</subtitle><author><name>Luo Kai</name></author><entry><title type="html">遮挡环境下的面部识别概述</title><link href="https://luokai0223.github.io/2022/02/08/paperread-0/" rel="alternate" type="text/html" title="遮挡环境下的面部识别概述" /><published>2022-02-08T00:00:00+08:00</published><updated>2022-02-08T00:00:00+08:00</updated><id>https://luokai0223.github.io/2022/02/08/paperread-0</id><content type="html" xml:base="https://luokai0223.github.io/2022/02/08/paperread-0/">&lt;h2 id=&quot;概述&quot;&gt;概述&lt;/h2&gt;
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.9.0">Jekyll</generator><link href="https://luokai0223.github.io/feed.xml" rel="self" type="application/atom+xml" /><link href="https://luokai0223.github.io/" rel="alternate" type="text/html" /><updated>2022-02-11T10:02:45+08:00</updated><id>https://luokai0223.github.io/feed.xml</id><title type="html">夜明了</title><subtitle>记录一些思考</subtitle><author><name>Luo Kai</name></author><entry><title type="html">遮挡环境下的面部识别概述</title><link href="https://luokai0223.github.io/2022/02/08/paperread-0/" rel="alternate" type="text/html" title="遮挡环境下的面部识别概述" /><published>2022-02-08T00:00:00+08:00</published><updated>2022-02-08T00:00:00+08:00</updated><id>https://luokai0223.github.io/2022/02/08/paperread-0</id><content type="html" xml:base="https://luokai0223.github.io/2022/02/08/paperread-0/">&lt;h2 id=&quot;概述&quot;&gt;概述&lt;/h2&gt;
 &lt;p&gt;面部遮挡的场景可能有：&lt;/p&gt;
 &lt;ul&gt;
   &lt;li&gt;脸部配饰：眼镜、口罩、帽子、头发。&lt;/li&gt;
@@ -14,7 +14,7 @@
 &lt;ul&gt;
   &lt;li&gt;Rigid templates：Harr 类和 AdaBoost 均属于此类，在实时系统中性能较差。&lt;/li&gt;
   &lt;li&gt;DPM(deformable part models): 实时系统表现有改善，但是计算复杂度较高。&lt;/li&gt;
-  &lt;li&gt;DCNN：DCNN provide a solid  solution for various A-PIE problems up to date.
+  &lt;li&gt;DCNN：DCNN provide a solid  solution for various A-PIE problems up to date。
     &lt;h3 id=&quot;遮挡下的人脸检测&quot;&gt;遮挡下的人脸检测&lt;/h3&gt;
     &lt;p&gt;处理遮挡人脸的方式主要分为以下三类：&lt;/p&gt;
   &lt;/li&gt;
@@ -48,7 +48,7 @@ Learning-based 特征可以分为四类：&lt;/p&gt;
 在多种算法上测试的结果，遮挡面积约 70% 时，false rejection rates 为 20% 至 50%。&lt;/p&gt;
 
 &lt;h2 id=&quot;总结&quot;&gt;总结&lt;/h2&gt;
-&lt;p&gt;对于戴口罩人脸识别，现在没有完善的解决方法，肯定会影响识别效果。iOS 最新的系统有了戴口罩识别功能，苹果的解决方式是识别眼部附近的特征，并且 iPhone 的结构光摄像头采集到的特征信息比一般的摄像头要多，才达到了支付级别的精度。&lt;/p&gt;</content><author><name>Luo Kai</name></author><category term="论文" /><summary type="html">概述 面部遮挡的场景可能有： 脸部配饰：眼镜、口罩、帽子、头发。 外部遮挡：被手或者各种其他物体遮挡。 人脸局部截取：在某些受限环境和视野下的局部面部捕捉。 人工遮挡：人工生成的局部色块、随机噪声等。</summary></entry><entry><title type="html">PyTorch源码阅读笔记（3）：operators算子——native算子注册</title><link href="https://luokai0223.github.io/2022/01/03/pytorchread-3/" rel="alternate" type="text/html" title="PyTorch源码阅读笔记（3）：operators算子——native算子注册" /><published>2022-01-03T00:00:00+08:00</published><updated>2022-01-03T00:00:00+08:00</updated><id>https://luokai0223.github.io/2022/01/03/pytorchread-3</id><content type="html" xml:base="https://luokai0223.github.io/2022/01/03/pytorchread-3/">&lt;p&gt;最开始想要看看PyTorch源码是从需要自定义算子开始，所以先看看PyTorch的native算子（翻译是原生算子？因为最终的具体实现都是和平台相关的，比如CUDA代码）是如何被注册以及调用的。&lt;br /&gt;
+&lt;p&gt;对于戴口罩人脸识别，现在没有完善的解决方法，肯定会影响识别效果。iOS 最新的系统有了戴口罩识别功能，苹果的解决方式是识别眼部附近的特征，并且 iPhone 的结构光摄像头采集到的特征信息比一般的摄像头要多，才达到了支付级别的精度。&lt;/p&gt;</content><author><name>Luo Kai</name></author><category term="论文阅读" /><summary type="html">概述 面部遮挡的场景可能有： 脸部配饰：眼镜、口罩、帽子、头发。 外部遮挡：被手或者各种其他物体遮挡。 人脸局部截取：在某些受限环境和视野下的局部面部捕捉。 人工遮挡：人工生成的局部色块、随机噪声等。</summary></entry><entry><title type="html">PyTorch源码阅读笔记（3）：operators算子 —— native算子注册</title><link href="https://luokai0223.github.io/2022/01/03/pytorchread-3/" rel="alternate" type="text/html" title="PyTorch源码阅读笔记（3）：operators算子 —— native算子注册" /><published>2022-01-03T00:00:00+08:00</published><updated>2022-01-03T00:00:00+08:00</updated><id>https://luokai0223.github.io/2022/01/03/pytorchread-3</id><content type="html" xml:base="https://luokai0223.github.io/2022/01/03/pytorchread-3/">&lt;p&gt;最开始想要看看PyTorch源码是从需要自定义算子开始，所以先看看PyTorch的native算子（翻译是原生算子？因为最终的具体实现都是和平台相关的，比如CUDA代码）是如何被注册以及调用的。&lt;br /&gt;
 ——————&lt;/p&gt;
 
 &lt;h2 id=&quot;算子定义&quot;&gt;算子定义&lt;/h2&gt;

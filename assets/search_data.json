@@ -105,7 +105,7 @@
     } ,
   
     {
-      "title"    : "PyTorch源码阅读笔记（3）：operators算子——native算子注册",
+      "title"    : "PyTorch源码阅读笔记（3）：operators算子 —— native算子注册",
       "category" : "PyTorch源码",
       
       "url"      : "https://luokai0223.github.io/2022/01/03/pytorchread-3/",
@@ -114,7 +114,7 @@
   
     {
       "title"    : "遮挡环境下的面部识别概述",
-      "category" : "论文",
+      "category" : "论文阅读",
       
       "url"      : "https://luokai0223.github.io/2022/02/08/paperread-0/",
       "keywords" : "CNN, Deep Learning, Face Recognition, Multi-Branch ConvNets"
