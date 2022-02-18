@@ -113,6 +113,14 @@
     } ,
   
     {
+      "title"    : "PyTorch源码阅读笔记（4）：自动微分张量库 —— 概览",
+      "category" : "PyTorch源码",
+      
+      "url"      : "https://luokai0223.github.io/2022/01/21/pytorchread-4/",
+      "keywords" : "PyTorch，libtorch"
+    } ,
+  
+    {
       "title"    : "论文阅读笔记：遮挡环境下的面部识别概述",
       "category" : "论文阅读",
       
