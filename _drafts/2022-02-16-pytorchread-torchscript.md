@@ -1,12 +1,11 @@
 ---
 layout: post
-title: PyTorch源码阅读笔记（4）：张量库
+title: PyTorch源码阅读笔记（5）：TorchScript
 categories: [PyTorch源码]
 description: 看了一部分PyTorch源码，总结记录一下
 keywords: PyTorch，libtorch
 ---
-PyTorch 的张量库实现有一篇核心作者之一 Edward Z Yang 的介绍：[PyTorch internals](http://blog.ezyang.com/2019/05/pytorch-internals/)。  
-截至今天有一些接口变化，本篇结合代码学习下相关实现。  
+
 ——————  
 
 ## 张量存储
