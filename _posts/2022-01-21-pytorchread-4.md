@@ -109,4 +109,4 @@ void VariableHooks::_backward(
   torch::autograd::backward({self}, {_gradient}, keep_graph, create_graph, input_vars);
 }
 ```
-反向传播过程来到了命名空间 torch::autograd 下，
+反向传播过程来到了命名空间 torch::autograd 下。
