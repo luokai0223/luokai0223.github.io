@@ -7,26 +7,48 @@ keywords: PyTorch，libtorch
 ---
 
 ——————  
+## TorchScript 的使用
+python api:
+```py
+class MyCell(torch.nn.Module):
+    def __init__(self):
+        super(MyCell, self).__init__()
+        self.linear = torch.nn.Linear(4, 4)
 
-## 张量存储
-张量接口定义可以在 aten/src/ATen/core/TensorBody.h 看到，Tensor 类含有大量自动生成的代码，可以进行算子调用。  
-Tensor 类继承自 TensorBase 类，张量相关的大量函数调用自父类 TensorBase ，TensorBase 类有一个关键的成员变量：
-```cpp
-protected:
-  c10::intrusive_ptr<TensorImpl, UndefinedTensorImpl> impl_;
-```
-TensorImpl 类为张量的底层表示，包含了实际的数据指针和用以描述张量的元数据，它继承自 c10::intrusive_ptr_target，intrusive_ptr_target 是 c10 模块的侵入式指针模块。  
-PyTorch 实现了一个侵入式指针来替代 C++ 的 shared_ptr，shared_ptr 使用时需要创建单独的对象进行引用计数，而侵入式指针在使用的类中进行引用计数，所以侵入式指针具有更好的性能。  
-使用侵入式指针的类都需要实现引用计数的函数，在这里则是都需要继承 c10::intrusive_ptr_target 类，intrusive_ptr_target 有如下两个成员变量，refcount_ 记录引用计数，weakcount_ 记录弱引用计数，弱引用计数可以处理循环引用的问题：  
-```cpp
-  mutable std::atomic<size_t> refcount_;
-  mutable std::atomic<size_t> weakcount_;
-```
-TensorImpl 有一个 Storage 类的成员变量，Storage 有如下成员变量：
-```cpp
- protected:
-  c10::intrusive_ptr<StorageImpl> storage_impl_;
-```
-StorageImpl 继承了 c10::intrusive_ptr_target, 是实质上的底层数据类，保存了原始数据指针，对于 Storage 类的设计官方备注是继承自原始的 Torch7 项目，倾向于去掉此模块的设计，但是比较麻烦没人有空做（过于真实的理由）。
+    def forward(self, x, h):
+        new_h = torch.tanh(self.linear(x) + h)
+        return new_h, new_h
 
-## 索引方法
+my_cell = MyCell()
+x, h = torch.rand(3, 4), torch.rand(3, 4)
+traced_cell = torch.jit.trace(my_cell, (x, h))
+print(traced_cell)
+traced_cell(x, h)
+```
+C++ api:
+```cpp
+#include <torch/script.h> // One-stop header.
+
+#include <iostream>
+#include <memory>
+
+int main(int argc, const char* argv[]) {
+  if (argc != 2) {
+    std::cerr << "usage: example-app <path-to-exported-script-module>\n";
+    return -1;
+  }
+
+
+  torch::jit::script::Module module;
+  try {
+    // Deserialize the ScriptModule from a file using torch::jit::load().
+    module = torch::jit::load(argv[1]);
+  }
+  catch (const c10::Error& e) {
+    std::cerr << "error loading the model\n";
+    return -1;
+  }
+
+  std::cout << "ok\n";
+}
+```

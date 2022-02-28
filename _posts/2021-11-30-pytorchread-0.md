@@ -19,5 +19,6 @@ Dispatcher 为 PyTorch 中的一个横切关注点，此篇分析一下 dispatch
 ### [3、原生算子注册](https://luokai0223.github.io/2022/01/03/pytorchread-3/)
 PyTorch 带有大量原生（native）算子，算子的注册与调用过程以 Dispatcher 为核心，涉及多种数据结构。在编程范式方面，用到了面向对象编程、宏编程、函数式编程，本篇主要理清这一过程的逻辑。
 ### [4、张量库](https://luokai0223.github.io/2022/01/03/pytorchread-4/)
-PyTorch 实现了一个自动微分张量库，设计上对张量概念与底层存储进行解耦。代码层面也包含了大量自动生成的代码用以实现调用算子，另外还有一个比较底层的模块 —— C10 模块的侵入式指针，此篇主要对这几块进行分析。
-### 5、TorchScript
+PyTorch 实现了一个自动微分张量库，设计上对张量概念与底层存储进行解耦。张量库的底层实现位于 C10 模块。
+### [5、TorchScript]
+TorchScript 为 PyTorch 中一种具有高性能的模型中间表示。
