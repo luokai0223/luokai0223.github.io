@@ -1,0 +1,3 @@
+User-agent: *
+Disallow:
+Sitemap: https://luokai.tech/sitemap.xml

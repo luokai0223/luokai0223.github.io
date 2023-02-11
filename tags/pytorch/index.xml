@@ -1,43 +1,16 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
   <channel>
-    <title>K&#39;s blog</title>
-    <link>https://luokai.tech/</link>
-    <description>Recent content on K&#39;s blog</description>
+    <title>PyTorch on K&#39;s blog</title>
+    <link>https://luokai.tech/tags/pytorch/</link>
+    <description>Recent content in PyTorch on K&#39;s blog</description>
     <image>
       <title>K&#39;s blog</title>
       <url>https://luokai.tech/%3Clink%20or%20path%20of%20image%20for%20opengraph,%20twitter-cards%3E</url>
       <link>https://luokai.tech/%3Clink%20or%20path%20of%20image%20for%20opengraph,%20twitter-cards%3E</link>
     </image>
     <generator>Hugo -- gohugo.io</generator>
-    <lastBuildDate>Sat, 11 Feb 2023 11:05:08 +0800</lastBuildDate><atom:link href="https://luokai.tech/index.xml" rel="self" type="application/rss+xml" />
-    <item>
-      <title>About</title>
-      <link>https://luokai.tech/about/about/</link>
-      <pubDate>Sat, 11 Feb 2023 11:05:08 +0800</pubDate>
-      
-      <guid>https://luokai.tech/about/about/</guid>
-      <description></description>
-    </item>
-    
-    <item>
-      <title>A卡机器学习配置与使用</title>
-      <link>https://luokai.tech/posts/other/amdcpu_ml_install/</link>
-      <pubDate>Sat, 11 Feb 2023 11:05:08 +0800</pubDate>
-      
-      <guid>https://luokai.tech/posts/other/amdcpu_ml_install/</guid>
-      <description>A卡机器学习配置与使用</description>
-    </item>
-    
-    <item>
-      <title>代码结构与编译</title>
-      <link>https://luokai.tech/posts/pytorch_read/build/</link>
-      <pubDate>Sat, 11 Feb 2023 11:05:08 +0800</pubDate>
-      
-      <guid>https://luokai.tech/posts/pytorch_read/build/</guid>
-      <description>代码结构与编译</description>
-    </item>
-    
+    <lastBuildDate>Sat, 11 Feb 2023 00:00:00 +0000</lastBuildDate><atom:link href="https://luokai.tech/tags/pytorch/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>dispatcher</title>
       <link>https://luokai.tech/posts/pytorch_read/dispatcher/</link>
@@ -82,17 +55,6 @@
       <guid>https://luokai.tech/posts/pytorch_read/autograd/</guid>
       <description>自动微分张量库</description>
     </item>
-    
-    <item>
-      <title>论文阅读笔记：遮挡环境下的面部识别概述</title>
-      <link>https://luokai.tech/posts/paper/occlusion_face/</link>
-      <pubDate>Tue, 08 Feb 2022 00:00:00 +0000</pubDate>
-      
-      <guid>https://luokai.tech/posts/paper/occlusion_face/</guid>
-      <description>论文阅读</description>
-    </item>
-    
-    
     
   </channel>
 </rss>

@@ -1,10 +1,42 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
-<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
   <channel>
     <title>Categories on K&#39;s blog</title>
-    <link>https://luokai0223.github.io/categories/</link>
+    <link>https://luokai.tech/categories/</link>
     <description>Recent content in Categories on K&#39;s blog</description>
+    <image>
+      <title>K&#39;s blog</title>
+      <url>https://luokai.tech/%3Clink%20or%20path%20of%20image%20for%20opengraph,%20twitter-cards%3E</url>
+      <link>https://luokai.tech/%3Clink%20or%20path%20of%20image%20for%20opengraph,%20twitter-cards%3E</link>
+    </image>
     <generator>Hugo -- gohugo.io</generator>
-    <language>en-us</language><atom:link href="https://luokai0223.github.io/categories/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Sat, 11 Feb 2023 11:05:08 +0800</lastBuildDate><atom:link href="https://luokai.tech/categories/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>PyTorch 源码阅读笔记</title>
+      <link>https://luokai.tech/categories/pytorch-%E6%BA%90%E7%A0%81%E9%98%85%E8%AF%BB%E7%AC%94%E8%AE%B0/</link>
+      <pubDate>Sat, 11 Feb 2023 11:05:08 +0800</pubDate>
+      
+      <guid>https://luokai.tech/categories/pytorch-%E6%BA%90%E7%A0%81%E9%98%85%E8%AF%BB%E7%AC%94%E8%AE%B0/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>环境配置</title>
+      <link>https://luokai.tech/categories/%E7%8E%AF%E5%A2%83%E9%85%8D%E7%BD%AE/</link>
+      <pubDate>Sat, 11 Feb 2023 11:05:08 +0800</pubDate>
+      
+      <guid>https://luokai.tech/categories/%E7%8E%AF%E5%A2%83%E9%85%8D%E7%BD%AE/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>论文阅读</title>
+      <link>https://luokai.tech/categories/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB/</link>
+      <pubDate>Tue, 08 Feb 2022 00:00:00 +0000</pubDate>
+      
+      <guid>https://luokai.tech/categories/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB/</guid>
+      <description></description>
+    </item>
+    
   </channel>
 </rss>
