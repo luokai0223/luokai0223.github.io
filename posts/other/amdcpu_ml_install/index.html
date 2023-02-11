@@ -1,47 +1,549 @@
-<!doctype html><html lang=en dir=auto><head><meta charset=utf-8><meta http-equiv=x-ua-compatible content="IE=edge"><meta name=viewport content="width=device-width,initial-scale=1,shrink-to-fit=no"><meta name=robots content="index, follow"><title>A卡机器学习配置与使用 | K's blog</title><meta name=keywords content="AMD,,Deep,Learning,,ROCm,,DirectML"><meta name=description content="A卡机器学习配置与使用"><meta name=author content="luokai"><link rel=canonical href=https://luokai.tech/posts/other/amdcpu_ml_install/><link crossorigin=anonymous href=/assets/css/stylesheet.c17a7458862fbf7bdec1657f9a28f438dab0bebc65731f3b28208648a924edda.css integrity="sha256-wXp0WIYvv3vewWV/mij0ONqwvrxlcx87KCCGSKkk7do=" rel="preload stylesheet" as=style><link rel=icon href=https://luokai.tech/favicon.ico><link rel=icon type=image/png sizes=16x16 href=https://luokai.tech/favicon-16x16.png><link rel=icon type=image/png sizes=32x32 href=https://luokai.tech/favicon-32x32.png><link rel=apple-touch-icon href=https://luokai.tech/apple-touch-icon.png><link rel=mask-icon href=https://luokai.tech/safari-pinned-tab.svg><meta name=theme-color content="#2e2e33"><meta name=msapplication-TileColor content="#2e2e33"><noscript><style>#theme-toggle,.top-link{display:none}</style><style>@media(prefers-color-scheme:dark){:root{--theme:rgb(29, 30, 32);--entry:rgb(46, 46, 51);--primary:rgb(218, 218, 219);--secondary:rgb(155, 156, 157);--tertiary:rgb(65, 66, 68);--content:rgb(196, 196, 197);--hljs-bg:rgb(46, 46, 51);--code-bg:rgb(55, 56, 62);--border:rgb(51, 51, 51)}.list{background:var(--theme)}.list:not(.dark)::-webkit-scrollbar-track{background:0 0}.list:not(.dark)::-webkit-scrollbar-thumb{border-color:var(--theme)}}</style></noscript><meta property="og:title" content="A卡机器学习配置与使用"><meta property="og:description" content="A卡机器学习配置与使用"><meta property="og:type" content="article"><meta property="og:url" content="https://luokai.tech/posts/other/amdcpu_ml_install/"><meta property="og:image" content="https://luokai.tech/%3Clink%20or%20path%20of%20image%20for%20opengraph,%20twitter-cards%3E"><meta property="article:section" content="posts"><meta property="article:published_time" content="2023-02-11T11:05:08+08:00"><meta property="article:modified_time" content="2023-02-11T11:05:08+08:00"><meta property="og:site_name" content="ExampleSite"><meta name=twitter:card content="summary_large_image"><meta name=twitter:image content="https://luokai.tech/%3Clink%20or%20path%20of%20image%20for%20opengraph,%20twitter-cards%3E"><meta name=twitter:title content="A卡机器学习配置与使用"><meta name=twitter:description content="A卡机器学习配置与使用"><script type=application/ld+json>{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Posts","item":"https://luokai.tech/posts/"},{"@type":"ListItem","position":2,"name":"A卡机器学习配置与使用","item":"https://luokai.tech/posts/other/amdcpu_ml_install/"}]}</script><script type=application/ld+json>{"@context":"https://schema.org","@type":"BlogPosting","headline":"A卡机器学习配置与使用","name":"A卡机器学习配置与使用","description":"A卡机器学习配置与使用","keywords":["AMD,","Deep","Learning,","ROCm,","DirectML"],"articleBody":"这几天看见英伟达发新显卡的新闻，看着杀猪的价格想起了许久没用的 6600XT，于是试着找了找 AMD 显卡做机器学习的方案，查阅资料试了如下两个加速方案，记录一下\nROCm DirectML ROCm 机器学习/深度学习框架的加速实现一般都高度依赖于硬件对应的底层加速方案，英伟达的 CUDA，英特尔的 OpenVINO，各家 NPU 以及加速卡的闭源库，AMD 官方的底层加速框架是 ROCm, 首先尝试了此方案。\n打开官网文档，查看 Prerequisite Actions 页面，很遗憾发现我的 6600XT 没在文档里写的确定支持的硬件列表内，不过感觉放弃太快有些不甘心，搜索引擎搜了些关键词，有成功有失败，研究一番后按下面步骤安装（ROCm 只支持linux，我使用了 Ubuntu 20.04，内核版本5.13.0-30-generic）：\n准备步骤 sudo apt update sudo apt-get install wget gnupg2 sudo usermod -a -G video $LOGNAME sudo usermod -a -G render $LOGNAME echo 'ADD_EXTRA_GROUPS=1' | sudo tee -a /etc/adduser.conf echo 'EXTRA_GROUPS=video' | sudo tee -a /etc/adduser.conf echo 'EXTRA_GROUPS=render' | sudo tee -a /etc/adduser.conf 使用官方安装脚本 我用的是 https://repo.radeon.com/amdgpu-install/22.10.1/ubuntu/focal/amdgpu-install_22.10.1.50101-1_all.deb。 不同的系统和rocm版本，对应的链接不一样，摸索了一下存档逻辑，所有脚本都在repo.radeon.com/amdgpu-install目录下，接着类似日期的数字22.10.1，越大 rocm 版本越高，然后的两级目录是发行版和发行版名称，最后文件名里面的50101表示5.1.1版本，安装完成后按如下命令运行脚本：\nsudo amdgpu-install --usecase=dkms amdgpu-install -y --usecase=rocm 安装过程会用到amd官方域名下的包，下载比较慢，软件后运行 rocm-smi, 看到如下结果：\n======================= ROCm System Management Interface ======================= ================================= Concise Info ================================= GPU Temp AvgPwr SCLK MCLK Fan Perf PwrCap VRAM% GPU% 0 36.0c 3.0W 0Mhz 96Mhz 0% auto 130.0W 8% 0% ================================================================================ ============================= End of ROCm SMI Log ============================== 运行 /opt/rocm/bin/rocminfo 可以看到设备信息，我的显卡设备显示为：\nName: gfx1032 Uuid: GPU-XX Marketing Name: AMD Radeon RX 6600 XT 看起来应该是安装成功了，下面测试一下深度学习框架。\n测试 PyTorch 按照 PyTorch 官网的 ROCm 版本安装命令安装，运行时如果有找不到共享库的报错，则增加环境变量 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/rocm/lib, 使用的时候，直接当成CUDA设备处理，出现下面的结果说明正常：\nIn [13]: torch.cuda.is_available() Out[13]: True 运行如果报 hipErrorNoBinaryForGpu: Unable to find code object for all current devices!, 说明存在设备兼容性的问题，我的 6600XT 通过增加环境变量 export HSA_OVERRIDE_GFX_VERSION=10.3.0 解决了，其他型号的显卡可能也可以修改这一项为对应的值解决。\n然后试一下运行的时候是否真的调用显卡，而不是回落到cpu，运行下面测试：\nIn [12]: while True: ...: torch.randn((999, 999), device=torch.device(\"cuda:0\"))**20 运行的时候查看 rocm-smi 命令的结果：\n======================= ROCm System Management Interface ======================= ================================= Concise Info ================================= GPU Temp AvgPwr SCLK MCLK Fan Perf PwrCap VRAM% GPU% 0 71.0c 126.0W 2375Mhz 1000Mhz 70.98% auto 130.0W 11% 99% ================================================================================ ============================= End of ROCm SMI Log ============================== 确实是正常运行的，显卡风扇也开始狂转。\nTensorFlow 运行 pip install tensorflow-rocm 下载tensorflow，安装完后运行，报了一些找不到共享库的错误，运行 sudo apt install rocm-libs hipcub miopen-hip，安装完依赖后，成功运行\nIn [4]: tf.config.list_physical_devices('GPU') Out[4]: [PhysicalDevice(name='/physical_device:GPU:0', device_type='GPU')] benchmark 跑了一下 ai-benchmark，结果是：\nDevice Inference Score: 3835 Device Training Score: 3291 Device AI Score: 7126 分数还没 GTX 980M 高，查看了一下具体项目，发现：\n15/19. PSPNet 15.1 - inference | batch=5, size=720x720: 290035.0 ± 0.0 ms 15.2 - training | batch=1, size=512x512: 211719.0 ± 0.0 ms 应该是 ROCm 加速库对某些算子的处理有问题，导致运行效率过低，曾经用华为的昇腾加速卡也遇见过在 yolo 的 concat 层耗时特别长，用了算子补丁才恢复理想效果。\nDirectML ROCm 只能运行于linux，因为平时避免不了使用 office 套件和一些只有 windows 有的软件，所以日常使用的是 window 11 + wsl2，wsl内可以直接调用 CUDA，达到很好的使用体验，找了下似乎没发现 ROCm 能够达到类似效果，但是发现微软出的加速后端 DirectML 也能支持 AMD 显卡进行机器学习，于是开始尝试。\n安装 DirectML 安装过程比较简单，选择需求按照官方一步步即可 https://learn.microsoft.com/en-us/windows/ai/directml/dml-intro\nPyTorch 官网上说想要在 wsl 里面使用，需要 windows 11, 我的台式机只有 windows 10, 于是就直接在 windows 中进行测试， 微软发布的 pytorch-directml 只有1.8.0版本（实现了部分算子），同时代码上用法是：\nmodel.to(\"dml\") 很明显带来两个问题，第一个是已有代码涉及到调用显卡的地方都要修改，第二是没实现的算子得自己写，我测试了一个生成网络，果然遇见 aten::reflection_pad2d 算子找不到，抄了一下新版的层实现代码，覆盖了模型的 reflection_pad2d 层后可以正常使用。\nTensorFlow tensorflow1 的包是 tensorflow-directml, 1.15 版本，tensorflow2 的包是 tensorflow-directml-plugin，两者的安装和用法微软网站上也有。\nonnxruntime onnxruntime 算是 DirectML 下使用最方便的框架了，跟随最新版，刚刚 pytorch 里的网络导出 onnx 跑没有遇见算子未实现的问题，加速效果也很好。\nbenchmark 在 DirectML 上跑分的结果是:\nDevice Inference Score: 8001 Device Training Score: 8872 Device AI Score: 16873 大概1080的水平\n总结 AMD 平台上进行机器学习/深度学习的话，在 linux 下算是基本可用，最大的影响是少部分算子性能有问题。而在 windows 比较麻烦，wsl 内使用不是所有框架都支持，还涉及到更多的算子未实现问题，可用度低很多。\n当然，在生产环境还是暂时慎重考虑 AMD 方案，我在测试的时候遇见过意外中断，并且还有内核死了直接关机的情况，可能是驱动问题。\n","wordCount":"371","inLanguage":"en","datePublished":"2023-02-11T11:05:08+08:00","dateModified":"2023-02-11T11:05:08+08:00","author":{"@type":"Person","name":"luokai"},"mainEntityOfPage":{"@type":"WebPage","@id":"https://luokai.tech/posts/other/amdcpu_ml_install/"},"publisher":{"@type":"Organization","name":"K's blog","logo":{"@type":"ImageObject","url":"https://luokai.tech/favicon.ico"}}}</script></head><body id=top><script>localStorage.getItem("pref-theme")==="dark"?document.body.classList.add("dark"):localStorage.getItem("pref-theme")==="light"?document.body.classList.remove("dark"):window.matchMedia("(prefers-color-scheme: dark)").matches&&document.body.classList.add("dark")</script><header class=header><nav class=nav><div class=logo><a href=https://luokai.tech/ accesskey=h title="K's blog (Alt + H)"><img src=https://luokai.tech/apple-touch-icon.png alt aria-label=logo height=35>K's blog</a><div class=logo-switches><button id=theme-toggle accesskey=t title="(Alt + T)"><svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg><svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg></button></div></div><ul id=menu><li><a href=https://luokai.tech/categories title=分类><span>分类</span></a></li><li><a href=https://luokai.tech/tags title=tags><span>tags</span></a></li><li><a href=https://luokai.tech/search title=搜索><span>搜索</span></a></li><li><a href=https://luokai.tech/archives title=归档><span>归档</span></a></li></ul></nav></header><main class=main><article class=post-single><header class=post-header><div class=breadcrumbs><a href=https://luokai.tech/>Home</a>&nbsp;»&nbsp;<a href=https://luokai.tech/posts/>Posts</a></div><h1 class=post-title>A卡机器学习配置与使用</h1><div class=post-description>A卡机器学习配置与使用</div><div class=post-meta><span title='2023-02-11 11:05:08 +0800 CST'>2023-11-11</span>&nbsp;·&nbsp;371 words&nbsp;·&nbsp;luokai</div></header><div class=toc><details><summary accesskey=c title="(Alt + C)"><span class=details>Table of Contents</span></summary><div class=inner><nav id=TableOfContents><ul><li><ul><li><a href=#rocm>ROCm</a></li><li><a href=#directml>DirectML</a></li><li><a href=#总结>总结</a></li></ul></li></ul></nav></div></details></div><div class=post-content><p>这几天看见英伟达发新显卡的新闻，看着杀猪的价格想起了许久没用的 6600XT，于是试着找了找 AMD 显卡做机器学习的方案，查阅资料试了如下两个加速方案，记录一下</p><ul><li>ROCm</li><li>DirectML</li></ul><h3 id=rocm>ROCm<a hidden class=anchor aria-hidden=true href=#rocm>#</a></h3><p>机器学习/深度学习框架的加速实现一般都高度依赖于硬件对应的底层加速方案，英伟达的 CUDA，英特尔的 OpenVINO，各家 NPU 以及加速卡的闭源库，AMD 官方的底层加速框架是 ROCm, 首先尝试了此方案。</p><p>打开官网文档，查看 Prerequisite Actions 页面，很遗憾发现我的 6600XT 没在文档里写的确定支持的硬件列表内，不过感觉放弃太快有些不甘心，搜索引擎搜了些关键词，有成功有失败，研究一番后按下面步骤安装（ROCm 只支持linux，我使用了 Ubuntu 20.04，内核版本5.13.0-30-generic）：</p><h4 id=准备步骤>准备步骤<a hidden class=anchor aria-hidden=true href=#准备步骤>#</a></h4><div class=highlight><pre tabindex=0 class=chroma><code class=language-shell data-lang=shell><span class=line><span class=cl>sudo apt update
-</span></span><span class=line><span class=cl>sudo apt-get install wget gnupg2 
-</span></span><span class=line><span class=cl>sudo usermod -a -G video <span class=nv>$LOGNAME</span>
-</span></span><span class=line><span class=cl>sudo usermod -a -G render <span class=nv>$LOGNAME</span>
-</span></span><span class=line><span class=cl><span class=nb>echo</span> <span class=s1>&#39;ADD_EXTRA_GROUPS=1&#39;</span> <span class=p>|</span> sudo tee -a /etc/adduser.conf
-</span></span><span class=line><span class=cl><span class=nb>echo</span> <span class=s1>&#39;EXTRA_GROUPS=video&#39;</span> <span class=p>|</span> sudo tee -a /etc/adduser.conf
-</span></span><span class=line><span class=cl><span class=nb>echo</span> <span class=s1>&#39;EXTRA_GROUPS=render&#39;</span> <span class=p>|</span> sudo tee -a /etc/adduser.conf
-</span></span></code></pre></div><h4 id=使用官方安装脚本>使用官方安装脚本<a hidden class=anchor aria-hidden=true href=#使用官方安装脚本>#</a></h4><p>我用的是 <a href=https://repo.radeon.com/amdgpu-install/22.10.1/ubuntu/focal/amdgpu-install_22.10.1.50101-1_all.deb>https://repo.radeon.com/amdgpu-install/22.10.1/ubuntu/focal/amdgpu-install_22.10.1.50101-1_all.deb</a>。
-不同的系统和rocm版本，对应的链接不一样，摸索了一下存档逻辑，所有脚本都在repo.radeon.com/amdgpu-install目录下，接着类似日期的数字22.10.1，越大 rocm 版本越高，然后的两级目录是发行版和发行版名称，最后文件名里面的50101表示5.1.1版本，安装完成后按如下命令运行脚本：</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-shell data-lang=shell><span class=line><span class=cl>sudo amdgpu-install --usecase<span class=o>=</span>dkms
-</span></span><span class=line><span class=cl>amdgpu-install -y --usecase<span class=o>=</span>rocm
-</span></span></code></pre></div><p>安装过程会用到amd官方域名下的包，下载比较慢，软件后运行 rocm-smi, 看到如下结果：</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-shell data-lang=shell><span class=line><span class=cl><span class=o>=======================</span> ROCm System Management <span class=nv>Interface</span> <span class=o>=======================</span>
-</span></span><span class=line><span class=cl><span class=o>=================================</span> Concise <span class=nv>Info</span> <span class=o>=================================</span>
-</span></span><span class=line><span class=cl>GPU  Temp   AvgPwr  SCLK  MCLK   Fan  Perf  PwrCap  VRAM%  GPU%  
-</span></span><span class=line><span class=cl><span class=m>0</span>    36.0c  3.0W    0Mhz  96Mhz  0%   auto  130.0W    8%   0%    
-</span></span><span class=line><span class=cl><span class=o>================================================================================</span>
-</span></span><span class=line><span class=cl><span class=o>=============================</span> End of ROCm SMI <span class=nv>Log</span> <span class=o>==============================</span>
-</span></span></code></pre></div><p>运行 /opt/rocm/bin/rocminfo 可以看到设备信息，我的显卡设备显示为：</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-shell data-lang=shell><span class=line><span class=cl>  Name:                    gfx1032                            
-</span></span><span class=line><span class=cl>  Uuid:                    GPU-XX                             
-</span></span><span class=line><span class=cl>  Marketing Name:          AMD Radeon RX <span class=m>6600</span> XT
-</span></span></code></pre></div><p>看起来应该是安装成功了，下面测试一下深度学习框架。</p><h4 id=测试>测试<a hidden class=anchor aria-hidden=true href=#测试>#</a></h4><h5 id=pytorch>PyTorch<a hidden class=anchor aria-hidden=true href=#pytorch>#</a></h5><p>按照 PyTorch 官网的 ROCm 版本安装命令安装，运行时如果有找不到共享库的报错，则增加环境变量 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/rocm/lib, 使用的时候，直接当成CUDA设备处理，出现下面的结果说明正常：</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-python data-lang=python><span class=line><span class=cl><span class=n>In</span> <span class=p>[</span><span class=mi>13</span><span class=p>]:</span> <span class=n>torch</span><span class=o>.</span><span class=n>cuda</span><span class=o>.</span><span class=n>is_available</span><span class=p>()</span>
-</span></span><span class=line><span class=cl><span class=n>Out</span><span class=p>[</span><span class=mi>13</span><span class=p>]:</span> <span class=kc>True</span>
-</span></span></code></pre></div><p>运行如果报 hipErrorNoBinaryForGpu: Unable to find code object for all current devices!, 说明存在设备兼容性的问题，我的 6600XT 通过增加环境变量 export HSA_OVERRIDE_GFX_VERSION=10.3.0 解决了，其他型号的显卡可能也可以修改这一项为对应的值解决。</p><p>然后试一下运行的时候是否真的调用显卡，而不是回落到cpu，运行下面测试：</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-python data-lang=python><span class=line><span class=cl><span class=n>In</span> <span class=p>[</span><span class=mi>12</span><span class=p>]:</span> <span class=k>while</span> <span class=kc>True</span><span class=p>:</span>
-</span></span><span class=line><span class=cl>    <span class=o>...</span><span class=p>:</span>     <span class=n>torch</span><span class=o>.</span><span class=n>randn</span><span class=p>((</span><span class=mi>999</span><span class=p>,</span> <span class=mi>999</span><span class=p>),</span> <span class=n>device</span><span class=o>=</span><span class=n>torch</span><span class=o>.</span><span class=n>device</span><span class=p>(</span><span class=s2>&#34;cuda:0&#34;</span><span class=p>))</span><span class=o>**</span><span class=mi>20</span>
-</span></span></code></pre></div><p>运行的时候查看 rocm-smi 命令的结果：</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-shell data-lang=shell><span class=line><span class=cl><span class=o>=======================</span> ROCm System Management <span class=nv>Interface</span> <span class=o>=======================</span>
-</span></span><span class=line><span class=cl><span class=o>=================================</span> Concise <span class=nv>Info</span> <span class=o>=================================</span>
-</span></span><span class=line><span class=cl>GPU  Temp   AvgPwr  SCLK     MCLK     Fan     Perf  PwrCap  VRAM%  GPU%  
-</span></span><span class=line><span class=cl><span class=m>0</span>    71.0c  126.0W  2375Mhz  1000Mhz  70.98%  auto  130.0W   11%   99%   
-</span></span><span class=line><span class=cl><span class=o>================================================================================</span>
-</span></span><span class=line><span class=cl><span class=o>=============================</span> End of ROCm SMI <span class=nv>Log</span> <span class=o>==============================</span>
-</span></span></code></pre></div><p>确实是正常运行的，显卡风扇也开始狂转。</p><h5 id=tensorflow>TensorFlow<a hidden class=anchor aria-hidden=true href=#tensorflow>#</a></h5><p>运行 pip install tensorflow-rocm 下载tensorflow，安装完后运行，报了一些找不到共享库的错误，运行 sudo apt install rocm-libs hipcub miopen-hip，安装完依赖后，成功运行</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-python data-lang=python><span class=line><span class=cl><span class=n>In</span> <span class=p>[</span><span class=mi>4</span><span class=p>]:</span> <span class=n>tf</span><span class=o>.</span><span class=n>config</span><span class=o>.</span><span class=n>list_physical_devices</span><span class=p>(</span><span class=s1>&#39;GPU&#39;</span><span class=p>)</span>
-</span></span><span class=line><span class=cl><span class=n>Out</span><span class=p>[</span><span class=mi>4</span><span class=p>]:</span> <span class=p>[</span><span class=n>PhysicalDevice</span><span class=p>(</span><span class=n>name</span><span class=o>=</span><span class=s1>&#39;/physical_device:GPU:0&#39;</span><span class=p>,</span> <span class=n>device_type</span><span class=o>=</span><span class=s1>&#39;GPU&#39;</span><span class=p>)]</span>
-</span></span></code></pre></div><h5 id=benchmark>benchmark<a hidden class=anchor aria-hidden=true href=#benchmark>#</a></h5><p>跑了一下 ai-benchmark，结果是：</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-shell data-lang=shell><span class=line><span class=cl>Device Inference Score: <span class=m>3835</span>
-</span></span><span class=line><span class=cl>Device Training Score: <span class=m>3291</span>
-</span></span><span class=line><span class=cl>Device AI Score: <span class=m>7126</span>
-</span></span></code></pre></div><p>分数还没 GTX 980M 高，查看了一下具体项目，发现：</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-shell data-lang=shell><span class=line><span class=cl>15/19. PSPNet
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>15.1 - inference <span class=p>|</span> <span class=nv>batch</span><span class=o>=</span>5, <span class=nv>size</span><span class=o>=</span>720x720: 290035.0 ± 0.0 ms
-</span></span><span class=line><span class=cl>15.2 - training  <span class=p>|</span> <span class=nv>batch</span><span class=o>=</span>1, <span class=nv>size</span><span class=o>=</span>512x512: 211719.0 ± 0.0 ms
-</span></span></code></pre></div><p>应该是 ROCm 加速库对某些算子的处理有问题，导致运行效率过低，曾经用华为的昇腾加速卡也遇见过在 yolo 的 concat 层耗时特别长，用了算子补丁才恢复理想效果。</p><h3 id=directml>DirectML<a hidden class=anchor aria-hidden=true href=#directml>#</a></h3><p>ROCm 只能运行于linux，因为平时避免不了使用 office 套件和一些只有 windows 有的软件，所以日常使用的是 window 11 + wsl2，wsl内可以直接调用 CUDA，达到很好的使用体验，找了下似乎没发现 ROCm 能够达到类似效果，但是发现微软出的加速后端 DirectML 也能支持 AMD 显卡进行机器学习，于是开始尝试。</p><h4 id=安装>安装<a hidden class=anchor aria-hidden=true href=#安装>#</a></h4><p>DirectML 安装过程比较简单，选择需求按照官方一步步即可 <a href=https://learn.microsoft.com/en-us/windows/ai/directml/dml-intro>https://learn.microsoft.com/en-us/windows/ai/directml/dml-intro</a></p><h5 id=pytorch-1>PyTorch<a hidden class=anchor aria-hidden=true href=#pytorch-1>#</a></h5><p>官网上说想要在 wsl 里面使用，需要 windows 11, 我的台式机只有 windows 10, 于是就直接在 windows 中进行测试，
-微软发布的 pytorch-directml 只有1.8.0版本（实现了部分算子），同时代码上用法是：</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-python data-lang=python><span class=line><span class=cl><span class=n>model</span><span class=o>.</span><span class=n>to</span><span class=p>(</span><span class=s2>&#34;dml&#34;</span><span class=p>)</span>
-</span></span></code></pre></div><p>很明显带来两个问题，第一个是已有代码涉及到调用显卡的地方都要修改，第二是没实现的算子得自己写，我测试了一个生成网络，果然遇见 aten::reflection_pad2d 算子找不到，抄了一下新版的层实现代码，覆盖了模型的 reflection_pad2d 层后可以正常使用。</p><h5 id=tensorflow-1>TensorFlow<a hidden class=anchor aria-hidden=true href=#tensorflow-1>#</a></h5><p>tensorflow1 的包是 tensorflow-directml, 1.15 版本，tensorflow2 的包是 tensorflow-directml-plugin，两者的安装和用法微软网站上也有。</p><h5 id=onnxruntime>onnxruntime<a hidden class=anchor aria-hidden=true href=#onnxruntime>#</a></h5><p>onnxruntime 算是 DirectML 下使用最方便的框架了，跟随最新版，刚刚 pytorch 里的网络导出 onnx 跑没有遇见算子未实现的问题，加速效果也很好。</p><h5 id=benchmark-1>benchmark<a hidden class=anchor aria-hidden=true href=#benchmark-1>#</a></h5><p>在 DirectML 上跑分的结果是:</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-shell data-lang=shell><span class=line><span class=cl>Device Inference Score: <span class=m>8001</span>
-</span></span><span class=line><span class=cl>Device Training Score: <span class=m>8872</span>
-</span></span><span class=line><span class=cl>Device AI Score: <span class=m>16873</span>
-</span></span></code></pre></div><p>大概1080的水平</p><h3 id=总结>总结<a hidden class=anchor aria-hidden=true href=#总结>#</a></h3><p>AMD 平台上进行机器学习/深度学习的话，在 linux 下算是基本可用，最大的影响是少部分算子性能有问题。而在 windows 比较麻烦，wsl 内使用不是所有框架都支持，还涉及到更多的算子未实现问题，可用度低很多。</p><p>当然，在生产环境还是暂时慎重考虑 AMD 方案，我在测试的时候遇见过意外中断，并且还有内核死了直接关机的情况，可能是驱动问题。</p></div><footer class=post-footer><ul class=post-tags></ul><nav class=paginav><a class=next href=https://luokai.tech/posts/pytorch_read/build/><span class=title>Next »</span><br><span>代码结构与编译</span></a></nav></footer></article></main><footer class=footer><span>&copy; 2023 <a href=https://luokai.tech/>K's blog</a></span>
-<span>Powered by
-<a href=https://gohugo.io/ rel="noopener noreferrer" target=_blank>Hugo</a> &
-        <a href=https://github.com/adityatelange/hugo-PaperMod/ rel=noopener target=_blank>PaperMod</a></span></footer><a href=#top aria-label="go to top" title="Go to Top (Alt + G)" class=top-link id=top-link accesskey=g><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentcolor"><path d="M12 6H0l6-6z"/></svg></a><script>let menu=document.getElementById("menu");menu&&(menu.scrollLeft=localStorage.getItem("menu-scroll-position"),menu.onscroll=function(){localStorage.setItem("menu-scroll-position",menu.scrollLeft)}),document.querySelectorAll('a[href^="#"]').forEach(e=>{e.addEventListener("click",function(e){e.preventDefault();var t=this.getAttribute("href").substr(1);window.matchMedia("(prefers-reduced-motion: reduce)").matches?document.querySelector(`[id='${decodeURIComponent(t)}']`).scrollIntoView():document.querySelector(`[id='${decodeURIComponent(t)}']`).scrollIntoView({behavior:"smooth"}),t==="top"?history.replaceState(null,null," "):history.pushState(null,null,`#${t}`)})})</script><script>var mybutton=document.getElementById("top-link");window.onscroll=function(){document.body.scrollTop>800||document.documentElement.scrollTop>800?(mybutton.style.visibility="visible",mybutton.style.opacity="1"):(mybutton.style.visibility="hidden",mybutton.style.opacity="0")}</script><script>document.getElementById("theme-toggle").addEventListener("click",()=>{document.body.className.includes("dark")?(document.body.classList.remove("dark"),localStorage.setItem("pref-theme","light")):(document.body.classList.add("dark"),localStorage.setItem("pref-theme","dark"))})</script></body></html>
+<!DOCTYPE html>
+<html lang="zh" dir="auto">
+
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>A卡机器学习配置与使用 | K&#39;s blog</title>
+<meta name="keywords" content="AMD,, Deep, Learning,, ROCm,, DirectML">
+<meta name="description" content="A卡机器学习配置与使用">
+<meta name="author" content="luokai">
+<link rel="canonical" href="https://luokai.tech/posts/other/amdcpu_ml_install/">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.1198b75e51d35b5b7d65621cd91bb8972beea3ec5e25ffa5777e6c311a24d49d.css" integrity="sha256-EZi3XlHTW1t9ZWIc2Ru4lyvuo&#43;xeJf&#43;ld35sMRok1J0=" rel="preload stylesheet" as="style">
+<script defer crossorigin="anonymous" src="/assets/js/highlight.f413e19d0714851f6474e7ee9632408e58ac146fbdbe62747134bea2fa3415e0.js" integrity="sha256-9BPhnQcUhR9kdOfuljJAjlisFG&#43;9vmJ0cTS&#43;ovo0FeA="
+    onload="hljs.initHighlightingOnLoad();"></script>
+<link rel="icon" href="https://luokai.tech/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://luokai.tech/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://luokai.tech/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://luokai.tech/apple-touch-icon.png">
+<link rel="mask-icon" href="https://luokai.tech/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --hljs-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-track {
+                background: 0 0;
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-thumb {
+                border-color: var(--theme);
+            }
+        }
+
+    </style>
+</noscript>
+<script type="application/javascript">
+var doNotTrack = false;
+if (!doNotTrack) {
+	(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	})(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+	ga('create', 'UA-67470195-2', 'auto');
+	
+	ga('send', 'pageview');
+}
+</script><meta property="og:title" content="A卡机器学习配置与使用" />
+<meta property="og:description" content="A卡机器学习配置与使用" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://luokai.tech/posts/other/amdcpu_ml_install/" /><meta property="og:image" content="https://luokai.tech/%3Clink%20or%20path%20of%20image%20for%20opengraph,%20twitter-cards%3E"/><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-02-11T11:05:08+08:00" />
+<meta property="article:modified_time" content="2023-02-11T11:05:08+08:00" /><meta property="og:site_name" content="K&#39;s blog" />
+
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://luokai.tech/%3Clink%20or%20path%20of%20image%20for%20opengraph,%20twitter-cards%3E"/>
+
+<meta name="twitter:title" content="A卡机器学习配置与使用"/>
+<meta name="twitter:description" content="A卡机器学习配置与使用"/>
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position":  1 ,
+      "name": "Posts",
+      "item": "https://luokai.tech/posts/"
+    }, 
+    {
+      "@type": "ListItem",
+      "position":  2 ,
+      "name": "A卡机器学习配置与使用",
+      "item": "https://luokai.tech/posts/other/amdcpu_ml_install/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "A卡机器学习配置与使用",
+  "name": "A卡机器学习配置与使用",
+  "description": "A卡机器学习配置与使用",
+  "keywords": [
+    "AMD,", "Deep", "Learning,", "ROCm,", "DirectML"
+  ],
+  "articleBody": "这几天看见英伟达发新显卡的新闻，看着杀猪的价格想起了许久没用的 6600XT，于是试着找了找 AMD 显卡做机器学习的方案，查阅资料试了如下两个加速方案，记录一下\nROCm DirectML ROCm 机器学习/深度学习框架的加速实现一般都高度依赖于硬件对应的底层加速方案，英伟达的 CUDA，英特尔的 OpenVINO，各家 NPU 以及加速卡的闭源库，AMD 官方的底层加速框架是 ROCm, 首先尝试了此方案。\n打开官网文档，查看 Prerequisite Actions 页面，很遗憾发现我的 6600XT 没在文档里写的确定支持的硬件列表内，不过感觉放弃太快有些不甘心，搜索引擎搜了些关键词，有成功有失败，研究一番后按下面步骤安装（ROCm 只支持linux，我使用了 Ubuntu 20.04，内核版本5.13.0-30-generic）：\n准备步骤 sudo apt update sudo apt-get install wget gnupg2 sudo usermod -a -G video $LOGNAME sudo usermod -a -G render $LOGNAME echo 'ADD_EXTRA_GROUPS=1' | sudo tee -a /etc/adduser.conf echo 'EXTRA_GROUPS=video' | sudo tee -a /etc/adduser.conf echo 'EXTRA_GROUPS=render' | sudo tee -a /etc/adduser.conf 使用官方安装脚本 我用的是 https://repo.radeon.com/amdgpu-install/22.10.1/ubuntu/focal/amdgpu-install_22.10.1.50101-1_all.deb。 不同的系统和rocm版本，对应的链接不一样，摸索了一下存档逻辑，所有脚本都在repo.radeon.com/amdgpu-install目录下，接着类似日期的数字22.10.1，越大 rocm 版本越高，然后的两级目录是发行版和发行版名称，最后文件名里面的50101表示5.1.1版本，安装完成后按如下命令运行脚本：\nsudo amdgpu-install --usecase=dkms amdgpu-install -y --usecase=rocm 安装过程会用到amd官方域名下的包，下载比较慢，软件后运行 rocm-smi, 看到如下结果：\n======================= ROCm System Management Interface ======================= ================================= Concise Info ================================= GPU Temp AvgPwr SCLK MCLK Fan Perf PwrCap VRAM% GPU% 0 36.0c 3.0W 0Mhz 96Mhz 0% auto 130.0W 8% 0% ================================================================================ ============================= End of ROCm SMI Log ============================== 运行 /opt/rocm/bin/rocminfo 可以看到设备信息，我的显卡设备显示为：\nName: gfx1032 Uuid: GPU-XX Marketing Name: AMD Radeon RX 6600 XT 看起来应该是安装成功了，下面测试一下深度学习框架。\n测试 PyTorch 按照 PyTorch 官网的 ROCm 版本安装命令安装，运行时如果有找不到共享库的报错，则增加环境变量 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/rocm/lib, 使用的时候，直接当成CUDA设备处理，出现下面的结果说明正常：\nIn [13]: torch.cuda.is_available() Out[13]: True 运行如果报 hipErrorNoBinaryForGpu: Unable to find code object for all current devices!, 说明存在设备兼容性的问题，我的 6600XT 通过增加环境变量 export HSA_OVERRIDE_GFX_VERSION=10.3.0 解决了，其他型号的显卡可能也可以修改这一项为对应的值解决。\n然后试一下运行的时候是否真的调用显卡，而不是回落到cpu，运行下面测试：\nIn [12]: while True: ...: torch.randn((999, 999), device=torch.device(\"cuda:0\"))**20 运行的时候查看 rocm-smi 命令的结果：\n======================= ROCm System Management Interface ======================= ================================= Concise Info ================================= GPU Temp AvgPwr SCLK MCLK Fan Perf PwrCap VRAM% GPU% 0 71.0c 126.0W 2375Mhz 1000Mhz 70.98% auto 130.0W 11% 99% ================================================================================ ============================= End of ROCm SMI Log ============================== 确实是正常运行的，显卡风扇也开始狂转。\nTensorFlow 运行 pip install tensorflow-rocm 下载tensorflow，安装完后运行，报了一些找不到共享库的错误，运行 sudo apt install rocm-libs hipcub miopen-hip，安装完依赖后，成功运行\nIn [4]: tf.config.list_physical_devices('GPU') Out[4]: [PhysicalDevice(name='/physical_device:GPU:0', device_type='GPU')] benchmark 跑了一下 ai-benchmark，结果是：\nDevice Inference Score: 3835 Device Training Score: 3291 Device AI Score: 7126 分数还没 GTX 980M 高，查看了一下具体项目，发现：\n15/19. PSPNet 15.1 - inference | batch=5, size=720x720: 290035.0 ± 0.0 ms 15.2 - training | batch=1, size=512x512: 211719.0 ± 0.0 ms 应该是 ROCm 加速库对某些算子的处理有问题，导致运行效率过低，曾经用华为的昇腾加速卡也遇见过在 yolo 的 concat 层耗时特别长，用了算子补丁才恢复理想效果。\nDirectML ROCm 只能运行于linux，因为平时避免不了使用 office 套件和一些只有 windows 有的软件，所以日常使用的是 window 11 + wsl2，wsl内可以直接调用 CUDA，达到很好的使用体验，找了下似乎没发现 ROCm 能够达到类似效果，但是发现微软出的加速后端 DirectML 也能支持 AMD 显卡进行机器学习，于是开始尝试。\n安装 DirectML 安装过程比较简单，选择需求按照官方一步步即可 https://learn.microsoft.com/en-us/windows/ai/directml/dml-intro\nPyTorch 官网上说想要在 wsl 里面使用，需要 windows 11, 我的台式机只有 windows 10, 于是就直接在 windows 中进行测试， 微软发布的 pytorch-directml 只有1.8.0版本（实现了部分算子），同时代码上用法是：\nmodel.to(\"dml\") 很明显带来两个问题，第一个是已有代码涉及到调用显卡的地方都要修改，第二是没实现的算子得自己写，我测试了一个生成网络，果然遇见 aten::reflection_pad2d 算子找不到，抄了一下新版的层实现代码，覆盖了模型的 reflection_pad2d 层后可以正常使用。\nTensorFlow tensorflow1 的包是 tensorflow-directml, 1.15 版本，tensorflow2 的包是 tensorflow-directml-plugin，两者的安装和用法微软网站上也有。\nonnxruntime onnxruntime 算是 DirectML 下使用最方便的框架了，跟随最新版，刚刚 pytorch 里的网络导出 onnx 跑没有遇见算子未实现的问题，加速效果也很好。\nbenchmark 在 DirectML 上跑分的结果是:\nDevice Inference Score: 8001 Device Training Score: 8872 Device AI Score: 16873 大概1080的水平\n总结 AMD 平台上进行机器学习/深度学习的话，在 linux 下算是基本可用，最大的影响是少部分算子性能有问题。而在 windows 比较麻烦，wsl 内使用不是所有框架都支持，还涉及到更多的算子未实现问题，可用度低很多。\n当然，在生产环境还是暂时慎重考虑 AMD 方案，我在测试的时候遇见过意外中断，并且还有内核死了直接关机的情况，可能是驱动问题。\n",
+  "wordCount" : "371",
+  "inLanguage": "zh",
+  "datePublished": "2023-02-11T11:05:08+08:00",
+  "dateModified": "2023-02-11T11:05:08+08:00",
+  "author":{
+    "@type": "Person",
+    "name": "luokai"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://luokai.tech/posts/other/amdcpu_ml_install/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "K's blog",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://luokai.tech/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+
+<body class="" id="top">
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.body.classList.add('dark');
+    } else if (localStorage.getItem("pref-theme") === "light") {
+        document.body.classList.remove('dark')
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.body.classList.add('dark');
+    }
+
+</script>
+
+<header class="header">
+    <nav class="nav">
+        <div class="logo">
+            <a href="https://luokai.tech/" accesskey="h" title="K&#39;s blog (Alt + H)">K&#39;s blog</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" accesskey="t" title="(Alt + T)">
+                    <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu">
+            <li>
+                <a href="https://luokai.tech/categories" title="分类">
+                    <span>分类</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://luokai.tech/tags" title="标签">
+                    <span>标签</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://luokai.tech/search" title="搜索">
+                    <span>搜索</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://luokai.tech/archives" title="归档">
+                    <span>归档</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    <div class="breadcrumbs"><a href="https://luokai.tech/">主页</a>&nbsp;»&nbsp;<a href="https://luokai.tech/posts/">Posts</a></div>
+    <h1 class="post-title">
+      A卡机器学习配置与使用
+    </h1>
+    <div class="post-description">
+      A卡机器学习配置与使用
+    </div>
+    <div class="post-meta"><span title='2023-02-11 11:05:08 +0800 CST'>2023-11-11</span>&nbsp;·&nbsp;371 字&nbsp;·&nbsp;luokai
+
+</div>
+  </header> <aside id="toc-container" class="toc-container wide">
+    <div class="toc">
+        <details  open>
+            <summary accesskey="c" title="(Alt + C)">
+                <span class="details">目录</span>
+            </summary>
+
+            <div class="inner"><ul>
+                    <li>
+                        <a href="#rocm" aria-label="ROCm">ROCm</a><ul>
+                            
+                    <li>
+                        <a href="#%e5%87%86%e5%a4%87%e6%ad%a5%e9%aa%a4" aria-label="准备步骤">准备步骤</a></li>
+                    <li>
+                        <a href="#%e4%bd%bf%e7%94%a8%e5%ae%98%e6%96%b9%e5%ae%89%e8%a3%85%e8%84%9a%e6%9c%ac" aria-label="使用官方安装脚本">使用官方安装脚本</a></li>
+                    <li>
+                        <a href="#%e6%b5%8b%e8%af%95" aria-label="测试">测试</a><ul>
+                            
+                    <li>
+                        <a href="#pytorch" aria-label="PyTorch">PyTorch</a></li>
+                    <li>
+                        <a href="#tensorflow" aria-label="TensorFlow">TensorFlow</a></li>
+                    <li>
+                        <a href="#benchmark" aria-label="benchmark">benchmark</a></li></ul>
+                    </li></ul>
+                    </li>
+                    <li>
+                        <a href="#directml" aria-label="DirectML">DirectML</a><ul>
+                            
+                    <li>
+                        <a href="#%e5%ae%89%e8%a3%85" aria-label="安装">安装</a><ul>
+                            
+                    <li>
+                        <a href="#pytorch-1" aria-label="PyTorch">PyTorch</a></li>
+                    <li>
+                        <a href="#tensorflow-1" aria-label="TensorFlow">TensorFlow</a></li>
+                    <li>
+                        <a href="#onnxruntime" aria-label="onnxruntime">onnxruntime</a></li>
+                    <li>
+                        <a href="#benchmark-1" aria-label="benchmark">benchmark</a></li></ul>
+                    </li></ul>
+                    </li>
+                    <li>
+                        <a href="#%e6%80%bb%e7%bb%93" aria-label="总结">总结</a>
+                    </li>
+                </ul>
+            </div>
+        </details>
+    </div>
+</aside>
+<script>
+    let activeElement;
+    let elements;
+    window.addEventListener('DOMContentLoaded', function (event) {
+        checkTocPosition();
+
+        elements = document.querySelectorAll('h1[id],h2[id],h3[id],h4[id],h5[id],h6[id]');
+         
+         activeElement = elements[0];
+         const id = encodeURI(activeElement.getAttribute('id')).toLowerCase();
+         document.querySelector(`.inner ul li a[href="#${id}"]`).classList.add('active');
+     }, false);
+
+    window.addEventListener('resize', function(event) {
+        checkTocPosition();
+    }, false);
+
+    window.addEventListener('scroll', () => {
+        
+        activeElement = Array.from(elements).find((element) => {
+            if ((getOffsetTop(element) - window.pageYOffset) > 0 && 
+                (getOffsetTop(element) - window.pageYOffset) < window.innerHeight/2) {
+                return element;
+            }
+        }) || activeElement
+
+        elements.forEach(element => {
+             const id = encodeURI(element.getAttribute('id')).toLowerCase();
+             if (element === activeElement){
+                 document.querySelector(`.inner ul li a[href="#${id}"]`).classList.add('active');
+             } else {
+                 document.querySelector(`.inner ul li a[href="#${id}"]`).classList.remove('active');
+             }
+         })
+     }, false);
+
+    const main = parseInt(getComputedStyle(document.body).getPropertyValue('--article-width'), 10);
+    const toc = parseInt(getComputedStyle(document.body).getPropertyValue('--toc-width'), 10);
+    const gap = parseInt(getComputedStyle(document.body).getPropertyValue('--gap'), 10);
+
+    function checkTocPosition() {
+        const width = document.body.scrollWidth;
+
+        if (width - main - (toc * 2) - (gap * 4) > 0) {
+            document.getElementById("toc-container").classList.add("wide");
+        } else {
+            document.getElementById("toc-container").classList.remove("wide");
+        }
+    }
+
+    function getOffsetTop(element) {
+        if (!element.getClientRects().length) {
+            return 0;
+        }
+        let rect = element.getBoundingClientRect();
+        let win = element.ownerDocument.defaultView;
+        return rect.top + win.pageYOffset;   
+    }
+</script>
+  <div class="post-content"><p>这几天看见英伟达发新显卡的新闻，看着杀猪的价格想起了许久没用的 6600XT，于是试着找了找 AMD 显卡做机器学习的方案，查阅资料试了如下两个加速方案，记录一下</p>
+<ul>
+<li>ROCm</li>
+<li>DirectML</li>
+</ul>
+<h3 id="rocm">ROCm<a hidden class="anchor" aria-hidden="true" href="#rocm">#</a></h3>
+<p>机器学习/深度学习框架的加速实现一般都高度依赖于硬件对应的底层加速方案，英伟达的 CUDA，英特尔的 OpenVINO，各家 NPU 以及加速卡的闭源库，AMD 官方的底层加速框架是 ROCm, 首先尝试了此方案。</p>
+<p>打开官网文档，查看 Prerequisite Actions 页面，很遗憾发现我的 6600XT 没在文档里写的确定支持的硬件列表内，不过感觉放弃太快有些不甘心，搜索引擎搜了些关键词，有成功有失败，研究一番后按下面步骤安装（ROCm 只支持linux，我使用了 Ubuntu 20.04，内核版本5.13.0-30-generic）：</p>
+<h4 id="准备步骤">准备步骤<a hidden class="anchor" aria-hidden="true" href="#准备步骤">#</a></h4>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl">sudo apt update
+</span></span><span class="line"><span class="cl">sudo apt-get install wget gnupg2 
+</span></span><span class="line"><span class="cl">sudo usermod -a -G video <span class="nv">$LOGNAME</span>
+</span></span><span class="line"><span class="cl">sudo usermod -a -G render <span class="nv">$LOGNAME</span>
+</span></span><span class="line"><span class="cl"><span class="nb">echo</span> <span class="s1">&#39;ADD_EXTRA_GROUPS=1&#39;</span> <span class="p">|</span> sudo tee -a /etc/adduser.conf
+</span></span><span class="line"><span class="cl"><span class="nb">echo</span> <span class="s1">&#39;EXTRA_GROUPS=video&#39;</span> <span class="p">|</span> sudo tee -a /etc/adduser.conf
+</span></span><span class="line"><span class="cl"><span class="nb">echo</span> <span class="s1">&#39;EXTRA_GROUPS=render&#39;</span> <span class="p">|</span> sudo tee -a /etc/adduser.conf
+</span></span></code></pre></div><h4 id="使用官方安装脚本">使用官方安装脚本<a hidden class="anchor" aria-hidden="true" href="#使用官方安装脚本">#</a></h4>
+<p>我用的是 <a href="https://repo.radeon.com/amdgpu-install/22.10.1/ubuntu/focal/amdgpu-install_22.10.1.50101-1_all.deb">https://repo.radeon.com/amdgpu-install/22.10.1/ubuntu/focal/amdgpu-install_22.10.1.50101-1_all.deb</a>。
+不同的系统和rocm版本，对应的链接不一样，摸索了一下存档逻辑，所有脚本都在repo.radeon.com/amdgpu-install目录下，接着类似日期的数字22.10.1，越大 rocm 版本越高，然后的两级目录是发行版和发行版名称，最后文件名里面的50101表示5.1.1版本，安装完成后按如下命令运行脚本：</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl">sudo amdgpu-install --usecase<span class="o">=</span>dkms
+</span></span><span class="line"><span class="cl">amdgpu-install -y --usecase<span class="o">=</span>rocm
+</span></span></code></pre></div><p>安装过程会用到amd官方域名下的包，下载比较慢，软件后运行 rocm-smi, 看到如下结果：</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl"><span class="o">=======================</span> ROCm System Management <span class="nv">Interface</span> <span class="o">=======================</span>
+</span></span><span class="line"><span class="cl"><span class="o">=================================</span> Concise <span class="nv">Info</span> <span class="o">=================================</span>
+</span></span><span class="line"><span class="cl">GPU  Temp   AvgPwr  SCLK  MCLK   Fan  Perf  PwrCap  VRAM%  GPU%  
+</span></span><span class="line"><span class="cl"><span class="m">0</span>    36.0c  3.0W    0Mhz  96Mhz  0%   auto  130.0W    8%   0%    
+</span></span><span class="line"><span class="cl"><span class="o">================================================================================</span>
+</span></span><span class="line"><span class="cl"><span class="o">=============================</span> End of ROCm SMI <span class="nv">Log</span> <span class="o">==============================</span>
+</span></span></code></pre></div><p>运行 /opt/rocm/bin/rocminfo 可以看到设备信息，我的显卡设备显示为：</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl">  Name:                    gfx1032                            
+</span></span><span class="line"><span class="cl">  Uuid:                    GPU-XX                             
+</span></span><span class="line"><span class="cl">  Marketing Name:          AMD Radeon RX <span class="m">6600</span> XT
+</span></span></code></pre></div><p>看起来应该是安装成功了，下面测试一下深度学习框架。</p>
+<h4 id="测试">测试<a hidden class="anchor" aria-hidden="true" href="#测试">#</a></h4>
+<h5 id="pytorch">PyTorch<a hidden class="anchor" aria-hidden="true" href="#pytorch">#</a></h5>
+<p>按照 PyTorch 官网的 ROCm 版本安装命令安装，运行时如果有找不到共享库的报错，则增加环境变量 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/rocm/lib, 使用的时候，直接当成CUDA设备处理，出现下面的结果说明正常：</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="n">In</span> <span class="p">[</span><span class="mi">13</span><span class="p">]:</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl"><span class="n">Out</span><span class="p">[</span><span class="mi">13</span><span class="p">]:</span> <span class="kc">True</span>
+</span></span></code></pre></div><p>运行如果报 hipErrorNoBinaryForGpu: Unable to find code object for all current devices!, 说明存在设备兼容性的问题，我的 6600XT 通过增加环境变量 export HSA_OVERRIDE_GFX_VERSION=10.3.0 解决了，其他型号的显卡可能也可以修改这一项为对应的值解决。</p>
+<p>然后试一下运行的时候是否真的调用显卡，而不是回落到cpu，运行下面测试：</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="n">In</span> <span class="p">[</span><span class="mi">12</span><span class="p">]:</span> <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">    <span class="o">...</span><span class="p">:</span>     <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">((</span><span class="mi">999</span><span class="p">,</span> <span class="mi">999</span><span class="p">),</span> <span class="n">device</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="s2">&#34;cuda:0&#34;</span><span class="p">))</span><span class="o">**</span><span class="mi">20</span>
+</span></span></code></pre></div><p>运行的时候查看 rocm-smi 命令的结果：</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl"><span class="o">=======================</span> ROCm System Management <span class="nv">Interface</span> <span class="o">=======================</span>
+</span></span><span class="line"><span class="cl"><span class="o">=================================</span> Concise <span class="nv">Info</span> <span class="o">=================================</span>
+</span></span><span class="line"><span class="cl">GPU  Temp   AvgPwr  SCLK     MCLK     Fan     Perf  PwrCap  VRAM%  GPU%  
+</span></span><span class="line"><span class="cl"><span class="m">0</span>    71.0c  126.0W  2375Mhz  1000Mhz  70.98%  auto  130.0W   11%   99%   
+</span></span><span class="line"><span class="cl"><span class="o">================================================================================</span>
+</span></span><span class="line"><span class="cl"><span class="o">=============================</span> End of ROCm SMI <span class="nv">Log</span> <span class="o">==============================</span>
+</span></span></code></pre></div><p>确实是正常运行的，显卡风扇也开始狂转。</p>
+<h5 id="tensorflow">TensorFlow<a hidden class="anchor" aria-hidden="true" href="#tensorflow">#</a></h5>
+<p>运行 pip install tensorflow-rocm 下载tensorflow，安装完后运行，报了一些找不到共享库的错误，运行 sudo apt install rocm-libs hipcub miopen-hip，安装完依赖后，成功运行</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="n">In</span> <span class="p">[</span><span class="mi">4</span><span class="p">]:</span> <span class="n">tf</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">list_physical_devices</span><span class="p">(</span><span class="s1">&#39;GPU&#39;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="n">Out</span><span class="p">[</span><span class="mi">4</span><span class="p">]:</span> <span class="p">[</span><span class="n">PhysicalDevice</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;/physical_device:GPU:0&#39;</span><span class="p">,</span> <span class="n">device_type</span><span class="o">=</span><span class="s1">&#39;GPU&#39;</span><span class="p">)]</span>
+</span></span></code></pre></div><h5 id="benchmark">benchmark<a hidden class="anchor" aria-hidden="true" href="#benchmark">#</a></h5>
+<p>跑了一下 ai-benchmark，结果是：</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl">Device Inference Score: <span class="m">3835</span>
+</span></span><span class="line"><span class="cl">Device Training Score: <span class="m">3291</span>
+</span></span><span class="line"><span class="cl">Device AI Score: <span class="m">7126</span>
+</span></span></code></pre></div><p>分数还没 GTX 980M 高，查看了一下具体项目，发现：</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl">15/19. PSPNet
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">15.1 - inference <span class="p">|</span> <span class="nv">batch</span><span class="o">=</span>5, <span class="nv">size</span><span class="o">=</span>720x720: 290035.0 ± 0.0 ms
+</span></span><span class="line"><span class="cl">15.2 - training  <span class="p">|</span> <span class="nv">batch</span><span class="o">=</span>1, <span class="nv">size</span><span class="o">=</span>512x512: 211719.0 ± 0.0 ms
+</span></span></code></pre></div><p>应该是 ROCm 加速库对某些算子的处理有问题，导致运行效率过低，曾经用华为的昇腾加速卡也遇见过在 yolo 的 concat 层耗时特别长，用了算子补丁才恢复理想效果。</p>
+<h3 id="directml">DirectML<a hidden class="anchor" aria-hidden="true" href="#directml">#</a></h3>
+<p>ROCm 只能运行于linux，因为平时避免不了使用 office 套件和一些只有 windows 有的软件，所以日常使用的是 window 11 + wsl2，wsl内可以直接调用 CUDA，达到很好的使用体验，找了下似乎没发现 ROCm 能够达到类似效果，但是发现微软出的加速后端 DirectML 也能支持 AMD 显卡进行机器学习，于是开始尝试。</p>
+<h4 id="安装">安装<a hidden class="anchor" aria-hidden="true" href="#安装">#</a></h4>
+<p>DirectML 安装过程比较简单，选择需求按照官方一步步即可 <a href="https://learn.microsoft.com/en-us/windows/ai/directml/dml-intro">https://learn.microsoft.com/en-us/windows/ai/directml/dml-intro</a></p>
+<h5 id="pytorch-1">PyTorch<a hidden class="anchor" aria-hidden="true" href="#pytorch-1">#</a></h5>
+<p>官网上说想要在 wsl 里面使用，需要 windows 11, 我的台式机只有 windows 10, 于是就直接在 windows 中进行测试，
+微软发布的 pytorch-directml 只有1.8.0版本（实现了部分算子），同时代码上用法是：</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="n">model</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="s2">&#34;dml&#34;</span><span class="p">)</span>
+</span></span></code></pre></div><p>很明显带来两个问题，第一个是已有代码涉及到调用显卡的地方都要修改，第二是没实现的算子得自己写，我测试了一个生成网络，果然遇见 aten::reflection_pad2d 算子找不到，抄了一下新版的层实现代码，覆盖了模型的 reflection_pad2d 层后可以正常使用。</p>
+<h5 id="tensorflow-1">TensorFlow<a hidden class="anchor" aria-hidden="true" href="#tensorflow-1">#</a></h5>
+<p>tensorflow1 的包是 tensorflow-directml, 1.15 版本，tensorflow2 的包是 tensorflow-directml-plugin，两者的安装和用法微软网站上也有。</p>
+<h5 id="onnxruntime">onnxruntime<a hidden class="anchor" aria-hidden="true" href="#onnxruntime">#</a></h5>
+<p>onnxruntime 算是 DirectML 下使用最方便的框架了，跟随最新版，刚刚 pytorch 里的网络导出 onnx 跑没有遇见算子未实现的问题，加速效果也很好。</p>
+<h5 id="benchmark-1">benchmark<a hidden class="anchor" aria-hidden="true" href="#benchmark-1">#</a></h5>
+<p>在 DirectML 上跑分的结果是:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl">Device Inference Score: <span class="m">8001</span>
+</span></span><span class="line"><span class="cl">Device Training Score: <span class="m">8872</span>
+</span></span><span class="line"><span class="cl">Device AI Score: <span class="m">16873</span>
+</span></span></code></pre></div><p>大概1080的水平</p>
+<h3 id="总结">总结<a hidden class="anchor" aria-hidden="true" href="#总结">#</a></h3>
+<p>AMD 平台上进行机器学习/深度学习的话，在 linux 下算是基本可用，最大的影响是少部分算子性能有问题。而在 windows 比较麻烦，wsl 内使用不是所有框架都支持，还涉及到更多的算子未实现问题，可用度低很多。</p>
+<p>当然，在生产环境还是暂时慎重考虑 AMD 方案，我在测试的时候遇见过意外中断，并且还有内核死了直接关机的情况，可能是驱动问题。</p>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+    </ul>
+<nav class="paginav">
+  <a class="next" href="https://luokai.tech/posts/pytorch_read/build/">
+    <span class="title">下一页 »</span>
+    <br>
+    <span>代码结构与编译</span>
+  </a>
+</nav>
+
+  </footer>
+</article>
+    </main>
+    
+<footer class="footer">
+    <span>&copy; 2023 <a href="https://luokai.tech/">K&#39;s blog</a></span>
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" aria-label="go to top" title="Go to Top (Alt + G)" class="top-link" id="top-link" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentColor">
+        <path d="M12 6H0l6-6z" />
+    </svg>
+</a>
+
+<script>
+    let menu = document.getElementById('menu')
+    if (menu) {
+        menu.scrollLeft = localStorage.getItem("menu-scroll-position");
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var mybutton = document.getElementById("top-link");
+    window.onscroll = function () {
+        if (document.body.scrollTop > 800 || document.documentElement.scrollTop > 800) {
+            mybutton.style.visibility = "visible";
+            mybutton.style.opacity = "1";
+        } else {
+            mybutton.style.visibility = "hidden";
+            mybutton.style.opacity = "0";
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        if (document.body.className.includes("dark")) {
+            document.body.classList.remove('dark');
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            document.body.classList.add('dark');
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+<script>
+    document.querySelectorAll('pre > code').forEach((codeblock) => {
+        const container = codeblock.parentNode.parentNode;
+
+        const copybutton = document.createElement('button');
+        copybutton.classList.add('copy-code');
+        copybutton.innerHTML = '复制';
+
+        function copyingDone() {
+            copybutton.innerHTML = '已复制！';
+            setTimeout(() => {
+                copybutton.innerHTML = '复制';
+            }, 2000);
+        }
+
+        copybutton.addEventListener('click', (cb) => {
+            if ('clipboard' in navigator) {
+                navigator.clipboard.writeText(codeblock.textContent);
+                copyingDone();
+                return;
+            }
+
+            const range = document.createRange();
+            range.selectNodeContents(codeblock);
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+            try {
+                document.execCommand('copy');
+                copyingDone();
+            } catch (e) { };
+            selection.removeRange(range);
+        });
+
+        if (container.classList.contains("highlight")) {
+            container.appendChild(copybutton);
+        } else if (container.parentNode.firstChild == container) {
+            
+        } else if (codeblock.parentNode.parentNode.parentNode.parentNode.parentNode.nodeName == "TABLE") {
+            
+            codeblock.parentNode.parentNode.parentNode.parentNode.parentNode.appendChild(copybutton);
+        } else {
+            
+            codeblock.parentNode.appendChild(copybutton);
+        }
+    });
+</script>
+</body>
+
+</html>

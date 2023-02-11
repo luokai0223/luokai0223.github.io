@@ -10,6 +10,7 @@
       <link>https://luokai.tech/%3Clink%20or%20path%20of%20image%20for%20opengraph,%20twitter-cards%3E</link>
     </image>
     <generator>Hugo -- gohugo.io</generator>
+    <language>zh-cn</language>
     <lastBuildDate>Sat, 11 Feb 2023 00:00:00 +0000</lastBuildDate><atom:link href="https://luokai.tech/tags/pytorch/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>dispatcher</title>
@@ -30,21 +31,21 @@
     </item>
     
     <item>
-      <title>原生算子注册</title>
-      <link>https://luokai.tech/posts/pytorch_read/operators_register/</link>
-      <pubDate>Sat, 11 Feb 2023 00:00:00 +0000</pubDate>
-      
-      <guid>https://luokai.tech/posts/pytorch_read/operators_register/</guid>
-      <description>代码结构与编译</description>
-    </item>
-    
-    <item>
       <title>算子调用</title>
       <link>https://luokai.tech/posts/pytorch_read/operators_call/</link>
       <pubDate>Sat, 11 Feb 2023 00:00:00 +0000</pubDate>
       
       <guid>https://luokai.tech/posts/pytorch_read/operators_call/</guid>
       <description>算子调用</description>
+    </item>
+    
+    <item>
+      <title>原生算子注册</title>
+      <link>https://luokai.tech/posts/pytorch_read/operators_register/</link>
+      <pubDate>Sat, 11 Feb 2023 00:00:00 +0000</pubDate>
+      
+      <guid>https://luokai.tech/posts/pytorch_read/operators_register/</guid>
+      <description>代码结构与编译</description>
     </item>
     
     <item>

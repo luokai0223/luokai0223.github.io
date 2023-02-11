@@ -10,6 +10,7 @@
       <link>https://luokai.tech/%3Clink%20or%20path%20of%20image%20for%20opengraph,%20twitter-cards%3E</link>
     </image>
     <generator>Hugo -- gohugo.io</generator>
+    <language>zh-cn</language>
     <lastBuildDate>Sat, 11 Feb 2023 11:05:08 +0800</lastBuildDate><atom:link href="https://luokai.tech/categories/%E7%8E%AF%E5%A2%83%E9%85%8D%E7%BD%AE/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>A卡机器学习配置与使用</title>

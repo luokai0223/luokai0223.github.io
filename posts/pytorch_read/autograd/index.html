@@ -1,114 +1,577 @@
-<!doctype html><html lang=en dir=auto><head><meta charset=utf-8><meta http-equiv=x-ua-compatible content="IE=edge"><meta name=viewport content="width=device-width,initial-scale=1,shrink-to-fit=no"><meta name=robots content="index, follow"><title>自动微分张量库 | K's blog</title><meta name=keywords content="PyTorch"><meta name=description content="自动微分张量库"><meta name=author content="luokai"><link rel=canonical href=https://luokai.tech/posts/pytorch_read/autograd/><link crossorigin=anonymous href=/assets/css/stylesheet.c17a7458862fbf7bdec1657f9a28f438dab0bebc65731f3b28208648a924edda.css integrity="sha256-wXp0WIYvv3vewWV/mij0ONqwvrxlcx87KCCGSKkk7do=" rel="preload stylesheet" as=style><link rel=icon href=https://luokai.tech/favicon.ico><link rel=icon type=image/png sizes=16x16 href=https://luokai.tech/favicon-16x16.png><link rel=icon type=image/png sizes=32x32 href=https://luokai.tech/favicon-32x32.png><link rel=apple-touch-icon href=https://luokai.tech/apple-touch-icon.png><link rel=mask-icon href=https://luokai.tech/safari-pinned-tab.svg><meta name=theme-color content="#2e2e33"><meta name=msapplication-TileColor content="#2e2e33"><noscript><style>#theme-toggle,.top-link{display:none}</style><style>@media(prefers-color-scheme:dark){:root{--theme:rgb(29, 30, 32);--entry:rgb(46, 46, 51);--primary:rgb(218, 218, 219);--secondary:rgb(155, 156, 157);--tertiary:rgb(65, 66, 68);--content:rgb(196, 196, 197);--hljs-bg:rgb(46, 46, 51);--code-bg:rgb(55, 56, 62);--border:rgb(51, 51, 51)}.list{background:var(--theme)}.list:not(.dark)::-webkit-scrollbar-track{background:0 0}.list:not(.dark)::-webkit-scrollbar-thumb{border-color:var(--theme)}}</style></noscript><meta property="og:title" content="自动微分张量库"><meta property="og:description" content="自动微分张量库"><meta property="og:type" content="article"><meta property="og:url" content="https://luokai.tech/posts/pytorch_read/autograd/"><meta property="og:image" content="https://luokai.tech/%3Clink%20or%20path%20of%20image%20for%20opengraph,%20twitter-cards%3E"><meta property="article:section" content="posts"><meta property="article:published_time" content="2023-02-11T00:00:00+00:00"><meta property="article:modified_time" content="2023-02-11T00:00:00+00:00"><meta property="og:site_name" content="ExampleSite"><meta name=twitter:card content="summary_large_image"><meta name=twitter:image content="https://luokai.tech/%3Clink%20or%20path%20of%20image%20for%20opengraph,%20twitter-cards%3E"><meta name=twitter:title content="自动微分张量库"><meta name=twitter:description content="自动微分张量库"><script type=application/ld+json>{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Posts","item":"https://luokai.tech/posts/"},{"@type":"ListItem","position":2,"name":"自动微分张量库","item":"https://luokai.tech/posts/pytorch_read/autograd/"}]}</script><script type=application/ld+json>{"@context":"https://schema.org","@type":"BlogPosting","headline":"自动微分张量库","name":"自动微分张量库","description":"自动微分张量库","keywords":["PyTorch"],"articleBody":"自动微分张量库是 PyTorch 的重要功能，本篇从整体流程的角度看一下相关实现。\n——————\nAPI 自动微分 C++ api 示例如下:\n#include #include int main() { auto x = torch::ones({2, 2}, torch::dtype(torch::kFloat32).device(torch::kCUDA, 0).requires_grad(true)); auto y = x * 2; auto out = y.sum(); out.backward(); std::cout \u003c\u003c x.grad() \u003c\u003c std::endl; } 张量存储 张量接口定义可以在 aten/src/ATen/core/TensorBody.h 看到，Tensor 类含有大量自动生成的代码，可以进行算子调用。\nTensor 类继承自 TensorBase 类，张量相关的大量函数调用自父类 TensorBase ，TensorBase 类有一个关键的成员变量：\nprotected: c10::intrusive_ptr\u003cTensorImpl, UndefinedTensorImpl\u003e impl_; TensorImpl 类为张量的底层表示，包含了实际的数据指针和用以描述张量的元数据，它继承自 c10::intrusive_ptr_target，intrusive_ptr_target 是 c10 模块的侵入式指针模块。\nPyTorch 实现了一个侵入式指针来替代 C++ 的 shared_ptr，shared_ptr 使用时需要创建单独的对象进行引用计数，而侵入式指针在使用的类中进行引用计数，所以侵入式指针具有更好的性能。\n使用侵入式指针的类都需要实现引用计数的函数，在这里则是都需要继承 c10::intrusive_ptr_target 类，intrusive_ptr_target 有如下两个成员变量，refcount_ 记录引用计数，weakcount_ 记录弱引用计数，弱引用计数可以处理循环引用的问题：\nmutable std::atomic\u003csize_t\u003e refcount_; mutable std::atomic\u003csize_t\u003e weakcount_; TensorImpl 有一个 Storage 类的成员变量，Storage 有如下成员变量：\nprotected: c10::intrusive_ptr\u003cStorageImpl\u003e storage_impl_; StorageImpl 继承了 c10::intrusive_ptr_target, 是实质上的底层数据类，保存了原始数据指针，对于 Storage 类的设计官方备注是继承自原始的 Torch7 项目，倾向于去掉此模块的设计，但是比较麻烦没人有空做。\nVariable 与 Tensor 在较新版本的 PyTorch 中，Variable 与 Tensor 进行了合并，有如下的命名空间定义：\nusing torch::autograd::Variable = at::Tensor 不过由于兼容性考虑，并没有完全去掉 Variable 相关的 api 。\n自动梯度 开头的示例中，backward 函数的调用会进行反向传播：\nvoid backward(const Tensor \u0026 gradient={}, c10::optional\u003cbool\u003e retain_graph=c10::nullopt, bool create_graph=false, c10::optional\u003cTensorList\u003e inputs=c10::nullopt) const { // NB: Adding this wrapper to _backward here because we'd like our // 'backwards' api to accept the 'inputs' argument optionally. Since code gen // currently does not support optional of TensorList our approach is to replace // backward in native_functions.yaml with _backward and call it here instead. if (inputs.has_value()) { TORCH_CHECK(inputs.value().size() \u003e 0, \"'inputs' argument to backward cannot be empty\") this-\u003e_backward(inputs.value(), gradient, retain_graph, create_graph); } else { this-\u003e_backward({}, gradient, retain_graph, create_graph); } } void Tensor::_backward(TensorList inputs, const c10::optional\u003cTensor\u003e\u0026 gradient, c10::optional\u003cbool\u003e keep_graph, bool create_graph) const { return impl::GetVariableHooks()-\u003e_backward(*this, inputs, gradient, keep_graph, create_graph); } namespace at { namespace impl { namespace { VariableHooksInterface* hooks = nullptr; } void SetVariableHooks(VariableHooksInterface* h) { hooks = h; } VariableHooksInterface* GetVariableHooks() { TORCH_CHECK(hooks, \"Support for autograd has not been loaded; have you linked against libtorch.so?\") return hooks; } }} // namespace at::impl VariableHooksInterface 类定义了一些虚函数，包括：\nvirtual void _backward(const Tensor\u0026, TensorList, const c10::optional\u003cTensor\u003e\u0026, c10::optional\u003cbool\u003e, bool) const = 0; VariableHooks 结构体继承自 VariableHooksInterface ，有如下函数：\nvoid VariableHooks::_backward( const Tensor\u0026 self, at::TensorList inputs, const c10::optional\u003cTensor\u003e\u0026 gradient, c10::optional\u003cbool\u003e keep_graph, bool create_graph) const { // TODO torch::autograd::backward should take the c10::optional gradient directly // instead of us having to unwrap it to Tensor _gradient here. Tensor _gradient = gradient.has_value() ? *gradient : Tensor(); std::vector\u003ctorch::autograd::Variable\u003e input_vars(inputs.begin(), inputs.end()); torch::autograd::backward({self}, {_gradient}, keep_graph, create_graph, input_vars); } 反向传播过程来到了命名空间 torch::autograd 下。\n计算图实现： Node： 计算图的点，对计算操作的抽象，接受0个或者多个输入，产生0个或者多个输出。 成员变量 edge_list next_edges_, 记录 Node 输出指向的 Edge。\nedge： 计算图的边，Node 之间连接关系的抽象。 成员变量 std::shared_ptr function，记录边指向的点。 成员变量 uint32_t input_nr，记录边是指向点的第几个输入。\n动态图： pytorch 的计算图是动态生成的 Q = X - Y\nTensorBody.h 里面的内联函数\n// aten::sub.Tensor(Tensor self, Tensor other, *, Scalar alpha=1) -\u003e Tensor inline at::Tensor Tensor::sub(const at::Tensor \u0026 other, const at::Scalar \u0026 alpha) const { return at::_ops::sub_Tensor::call(const_cast\u003cTensor\u0026\u003e(*this), other, alpha); } cmake-build-debug-wsl-clang/aten/src/ATen/ops/sub_ops.h 里面有自动脚本生成的一个结构体声明\nstruct TORCH_API sub_Tensor { using schema = at::Tensor (const at::Tensor \u0026, const at::Tensor \u0026, const at::Scalar \u0026); using ptr_schema = schema*; // See Note [static constexpr char* members for windows NVCC] STATIC_CONSTEXPR_STR_INL_EXCEPT_WIN_CUDA(name, \"aten::sub\") STATIC_CONSTEXPR_STR_INL_EXCEPT_WIN_CUDA(overload_name, \"Tensor\") STATIC_CONSTEXPR_STR_INL_EXCEPT_WIN_CUDA(schema_str, \"sub.Tensor(Tensor self, Tensor other, *, Scalar alpha=1) -\u003e Tensor\") static at::Tensor call(const at::Tensor \u0026 self, const at::Tensor \u0026 other, const at::Scalar \u0026 alpha); static at::Tensor redispatch(c10::DispatchKeySet dispatchKeySet, const at::Tensor \u0026 self, const at::Tensor \u0026 other, const at::Scalar \u0026 alpha); }; // ... #define STATIC_CONSTEXPR_STR_INL_EXCEPT_WIN_CUDA(field, val) \\ static constexpr const char* field = val; aten/src/ATen/Operators_4.cpp 实现\n// aten::sub.Tensor(Tensor self, Tensor other, *, Scalar alpha=1) -\u003e Tensor static C10_NOINLINE c10::TypedOperatorHandle\u003csub_Tensor::schema\u003e create_sub_Tensor_typed_handle() { return c10::Dispatcher::singleton() .findSchemaOrThrow(sub_Tensor::name, sub_Tensor::overload_name) .typed\u003csub_Tensor::schema\u003e(); } // aten::sub.Tensor(Tensor self, Tensor other, *, Scalar alpha=1) -\u003e Tensor at::Tensor sub_Tensor::call(const at::Tensor \u0026 self, const at::Tensor \u0026 other, const at::Scalar \u0026 alpha) { static auto op = create_sub_Tensor_typed_handle(); return op.call(self, other, alpha); } // aten::sub.Tensor(Tensor self, Tensor other, *, Scalar alpha=1) -\u003e Tensor at::Tensor sub_Tensor::redispatch(c10::DispatchKeySet dispatchKeySet, const at::Tensor \u0026 self, const at::Tensor \u0026 other, const at::Scalar \u0026 alpha) { static auto op = create_sub_Tensor_typed_handle(); return op.redispatch(dispatchKeySet, self, other, alpha); } dispatch 的逻辑…\nautograd 不是tensor的必需模块，\n","wordCount":"587","inLanguage":"en","datePublished":"2023-02-11T00:00:00Z","dateModified":"2023-02-11T00:00:00Z","author":{"@type":"Person","name":"luokai"},"mainEntityOfPage":{"@type":"WebPage","@id":"https://luokai.tech/posts/pytorch_read/autograd/"},"publisher":{"@type":"Organization","name":"K's blog","logo":{"@type":"ImageObject","url":"https://luokai.tech/favicon.ico"}}}</script></head><body id=top><script>localStorage.getItem("pref-theme")==="dark"?document.body.classList.add("dark"):localStorage.getItem("pref-theme")==="light"?document.body.classList.remove("dark"):window.matchMedia("(prefers-color-scheme: dark)").matches&&document.body.classList.add("dark")</script><header class=header><nav class=nav><div class=logo><a href=https://luokai.tech/ accesskey=h title="K's blog (Alt + H)"><img src=https://luokai.tech/apple-touch-icon.png alt aria-label=logo height=35>K's blog</a><div class=logo-switches><button id=theme-toggle accesskey=t title="(Alt + T)"><svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg><svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg></button></div></div><ul id=menu><li><a href=https://luokai.tech/categories title=分类><span>分类</span></a></li><li><a href=https://luokai.tech/tags title=tags><span>tags</span></a></li><li><a href=https://luokai.tech/search title=搜索><span>搜索</span></a></li><li><a href=https://luokai.tech/archives title=归档><span>归档</span></a></li></ul></nav></header><main class=main><article class=post-single><header class=post-header><div class=breadcrumbs><a href=https://luokai.tech/>Home</a>&nbsp;»&nbsp;<a href=https://luokai.tech/posts/>Posts</a></div><h1 class=post-title>自动微分张量库<sup><span class=entry-isdraft>&nbsp;&nbsp;[draft]</span></sup></h1><div class=post-description>自动微分张量库</div><div class=post-meta><span title='2023-02-11 00:00:00 +0000 UTC'>2023-11-11</span>&nbsp;·&nbsp;587 words&nbsp;·&nbsp;luokai</div></header><div class=toc><details><summary accesskey=c title="(Alt + C)"><span class=details>Table of Contents</span></summary><div class=inner><nav id=TableOfContents><ul><li><a href=#api>API</a></li><li><a href=#张量存储>张量存储</a></li><li><a href=#variable-与-tensor>Variable 与 Tensor</a></li><li><a href=#自动梯度>自动梯度</a></li></ul></nav></div></details></div><div class=post-content><p>自动微分张量库是 PyTorch 的重要功能，本篇从整体流程的角度看一下相关实现。<br>——————</p><h2 id=api>API<a hidden class=anchor aria-hidden=true href=#api>#</a></h2><p>自动微分 C++ api 示例如下:</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=cp>#include</span> <span class=cpf>&lt;torch/torch.h&gt;</span><span class=cp>
-</span></span></span><span class=line><span class=cl><span class=cp>#include</span> <span class=cpf>&lt;iostream&gt;</span><span class=cp>
-</span></span></span><span class=line><span class=cl><span class=cp></span>
-</span></span><span class=line><span class=cl><span class=kt>int</span> <span class=nf>main</span><span class=p>()</span> <span class=p>{</span>
-</span></span><span class=line><span class=cl>  <span class=k>auto</span> <span class=n>x</span> <span class=o>=</span> <span class=n>torch</span><span class=o>::</span><span class=n>ones</span><span class=p>({</span><span class=mi>2</span><span class=p>,</span> <span class=mi>2</span><span class=p>},</span> <span class=n>torch</span><span class=o>::</span><span class=n>dtype</span><span class=p>(</span><span class=n>torch</span><span class=o>::</span><span class=n>kFloat32</span><span class=p>).</span><span class=n>device</span><span class=p>(</span><span class=n>torch</span><span class=o>::</span><span class=n>kCUDA</span><span class=p>,</span> <span class=mi>0</span><span class=p>).</span><span class=n>requires_grad</span><span class=p>(</span><span class=nb>true</span><span class=p>));</span>
-</span></span><span class=line><span class=cl>  <span class=k>auto</span> <span class=n>y</span> <span class=o>=</span> <span class=n>x</span> <span class=o>*</span> <span class=mi>2</span><span class=p>;</span>
-</span></span><span class=line><span class=cl>  <span class=k>auto</span> <span class=n>out</span> <span class=o>=</span> <span class=n>y</span><span class=p>.</span><span class=n>sum</span><span class=p>();</span>
-</span></span><span class=line><span class=cl>  <span class=n>out</span><span class=p>.</span><span class=n>backward</span><span class=p>();</span>
-</span></span><span class=line><span class=cl>  <span class=n>std</span><span class=o>::</span><span class=n>cout</span> <span class=o>&lt;&lt;</span> <span class=n>x</span><span class=p>.</span><span class=n>grad</span><span class=p>()</span> <span class=o>&lt;&lt;</span> <span class=n>std</span><span class=o>::</span><span class=n>endl</span><span class=p>;</span>
-</span></span><span class=line><span class=cl><span class=p>}</span>
-</span></span></code></pre></div><h2 id=张量存储>张量存储<a hidden class=anchor aria-hidden=true href=#张量存储>#</a></h2><p>张量接口定义可以在 aten/src/ATen/core/TensorBody.h 看到，Tensor 类含有大量自动生成的代码，可以进行算子调用。<br>Tensor 类继承自 TensorBase 类，张量相关的大量函数调用自父类 TensorBase ，TensorBase 类有一个关键的成员变量：</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=k>protected</span><span class=o>:</span>
-</span></span><span class=line><span class=cl>  <span class=n>c10</span><span class=o>::</span><span class=n>intrusive_ptr</span><span class=o>&lt;</span><span class=n>TensorImpl</span><span class=p>,</span> <span class=n>UndefinedTensorImpl</span><span class=o>&gt;</span> <span class=n>impl_</span><span class=p>;</span>
-</span></span></code></pre></div><p>TensorImpl 类为张量的底层表示，包含了实际的数据指针和用以描述张量的元数据，它继承自 c10::intrusive_ptr_target，intrusive_ptr_target 是 c10 模块的侵入式指针模块。<br>PyTorch 实现了一个侵入式指针来替代 C++ 的 shared_ptr，shared_ptr 使用时需要创建单独的对象进行引用计数，而侵入式指针在使用的类中进行引用计数，所以侵入式指针具有更好的性能。<br>使用侵入式指针的类都需要实现引用计数的函数，在这里则是都需要继承 c10::intrusive_ptr_target 类，intrusive_ptr_target 有如下两个成员变量，refcount_ 记录引用计数，weakcount_ 记录弱引用计数，弱引用计数可以处理循环引用的问题：</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl>  <span class=k>mutable</span> <span class=n>std</span><span class=o>::</span><span class=n>atomic</span><span class=o>&lt;</span><span class=n>size_t</span><span class=o>&gt;</span> <span class=n>refcount_</span><span class=p>;</span>
-</span></span><span class=line><span class=cl>  <span class=k>mutable</span> <span class=n>std</span><span class=o>::</span><span class=n>atomic</span><span class=o>&lt;</span><span class=n>size_t</span><span class=o>&gt;</span> <span class=n>weakcount_</span><span class=p>;</span>
-</span></span></code></pre></div><p>TensorImpl 有一个 Storage 类的成员变量，Storage 有如下成员变量：</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl> <span class=k>protected</span><span class=o>:</span>
-</span></span><span class=line><span class=cl>  <span class=n>c10</span><span class=o>::</span><span class=n>intrusive_ptr</span><span class=o>&lt;</span><span class=n>StorageImpl</span><span class=o>&gt;</span> <span class=n>storage_impl_</span><span class=p>;</span>
-</span></span></code></pre></div><p>StorageImpl 继承了 c10::intrusive_ptr_target, 是实质上的底层数据类，保存了原始数据指针，对于 Storage 类的设计官方备注是继承自原始的 Torch7 项目，倾向于去掉此模块的设计，但是比较麻烦没人有空做。</p><h2 id=variable-与-tensor>Variable 与 Tensor<a hidden class=anchor aria-hidden=true href=#variable-与-tensor>#</a></h2><p>在较新版本的 PyTorch 中，Variable 与 Tensor 进行了合并，有如下的命名空间定义：</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=k>using</span> <span class=n>torch</span><span class=o>::</span><span class=n>autograd</span><span class=o>::</span><span class=n>Variable</span> <span class=o>=</span> <span class=n>at</span><span class=o>::</span><span class=n>Tensor</span>
-</span></span></code></pre></div><p>不过由于兼容性考虑，并没有完全去掉 Variable 相关的 api 。</p><h2 id=自动梯度>自动梯度<a hidden class=anchor aria-hidden=true href=#自动梯度>#</a></h2><p>开头的示例中，backward 函数的调用会进行反向传播：</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl>  <span class=kt>void</span> <span class=nf>backward</span><span class=p>(</span><span class=k>const</span> <span class=n>Tensor</span> <span class=o>&amp;</span> <span class=n>gradient</span><span class=o>=</span><span class=p>{},</span> <span class=n>c10</span><span class=o>::</span><span class=n>optional</span><span class=o>&lt;</span><span class=kt>bool</span><span class=o>&gt;</span> <span class=n>retain_graph</span><span class=o>=</span><span class=n>c10</span><span class=o>::</span><span class=n>nullopt</span><span class=p>,</span> <span class=kt>bool</span> <span class=n>create_graph</span><span class=o>=</span><span class=nb>false</span><span class=p>,</span> <span class=n>c10</span><span class=o>::</span><span class=n>optional</span><span class=o>&lt;</span><span class=n>TensorList</span><span class=o>&gt;</span> <span class=n>inputs</span><span class=o>=</span><span class=n>c10</span><span class=o>::</span><span class=n>nullopt</span><span class=p>)</span> <span class=k>const</span> <span class=p>{</span>
-</span></span><span class=line><span class=cl>    <span class=c1>// NB: Adding this wrapper to _backward here because we&#39;d like our
-</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=c1>// &#39;backwards&#39; api to accept the &#39;inputs&#39; argument optionally. Since code gen
-</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=c1>// currently does not support optional of TensorList our approach is to replace
-</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=c1>// backward in native_functions.yaml with _backward and call it here instead.
-</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=k>if</span> <span class=p>(</span><span class=n>inputs</span><span class=p>.</span><span class=n>has_value</span><span class=p>())</span> <span class=p>{</span>
-</span></span><span class=line><span class=cl>      <span class=n>TORCH_CHECK</span><span class=p>(</span><span class=n>inputs</span><span class=p>.</span><span class=n>value</span><span class=p>().</span><span class=n>size</span><span class=p>()</span> <span class=o>&gt;</span> <span class=mi>0</span><span class=p>,</span> <span class=s>&#34;&#39;inputs&#39; argument to backward cannot be empty&#34;</span><span class=p>)</span>
-</span></span><span class=line><span class=cl>      <span class=k>this</span><span class=o>-&gt;</span><span class=n>_backward</span><span class=p>(</span><span class=n>inputs</span><span class=p>.</span><span class=n>value</span><span class=p>(),</span> <span class=n>gradient</span><span class=p>,</span> <span class=n>retain_graph</span><span class=p>,</span> <span class=n>create_graph</span><span class=p>);</span>
-</span></span><span class=line><span class=cl>    <span class=p>}</span> <span class=k>else</span> <span class=p>{</span>
-</span></span><span class=line><span class=cl>      <span class=k>this</span><span class=o>-&gt;</span><span class=n>_backward</span><span class=p>({},</span> <span class=n>gradient</span><span class=p>,</span> <span class=n>retain_graph</span><span class=p>,</span> <span class=n>create_graph</span><span class=p>);</span>
-</span></span><span class=line><span class=cl>    <span class=p>}</span>
-</span></span><span class=line><span class=cl>  <span class=p>}</span>
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl><span class=kt>void</span> <span class=n>Tensor</span><span class=o>::</span><span class=n>_backward</span><span class=p>(</span><span class=n>TensorList</span> <span class=n>inputs</span><span class=p>,</span>
-</span></span><span class=line><span class=cl>        <span class=k>const</span> <span class=n>c10</span><span class=o>::</span><span class=n>optional</span><span class=o>&lt;</span><span class=n>Tensor</span><span class=o>&gt;&amp;</span> <span class=n>gradient</span><span class=p>,</span>
-</span></span><span class=line><span class=cl>        <span class=n>c10</span><span class=o>::</span><span class=n>optional</span><span class=o>&lt;</span><span class=kt>bool</span><span class=o>&gt;</span> <span class=n>keep_graph</span><span class=p>,</span>
-</span></span><span class=line><span class=cl>        <span class=kt>bool</span> <span class=n>create_graph</span><span class=p>)</span> <span class=k>const</span> <span class=p>{</span>
-</span></span><span class=line><span class=cl>  <span class=k>return</span> <span class=n>impl</span><span class=o>::</span><span class=n>GetVariableHooks</span><span class=p>()</span><span class=o>-&gt;</span><span class=n>_backward</span><span class=p>(</span><span class=o>*</span><span class=k>this</span><span class=p>,</span> <span class=n>inputs</span><span class=p>,</span> <span class=n>gradient</span><span class=p>,</span> <span class=n>keep_graph</span><span class=p>,</span> <span class=n>create_graph</span><span class=p>);</span>
-</span></span><span class=line><span class=cl><span class=p>}</span>
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl><span class=k>namespace</span> <span class=n>at</span> <span class=p>{</span> <span class=k>namespace</span> <span class=n>impl</span> <span class=p>{</span>
-</span></span><span class=line><span class=cl><span class=k>namespace</span> <span class=p>{</span>
-</span></span><span class=line><span class=cl><span class=n>VariableHooksInterface</span><span class=o>*</span> <span class=n>hooks</span> <span class=o>=</span> <span class=k>nullptr</span><span class=p>;</span>
-</span></span><span class=line><span class=cl><span class=p>}</span>
-</span></span><span class=line><span class=cl><span class=kt>void</span> <span class=nf>SetVariableHooks</span><span class=p>(</span><span class=n>VariableHooksInterface</span><span class=o>*</span> <span class=n>h</span><span class=p>)</span> <span class=p>{</span>
-</span></span><span class=line><span class=cl>  <span class=n>hooks</span> <span class=o>=</span> <span class=n>h</span><span class=p>;</span>
-</span></span><span class=line><span class=cl><span class=p>}</span>
-</span></span><span class=line><span class=cl><span class=n>VariableHooksInterface</span><span class=o>*</span> <span class=nf>GetVariableHooks</span><span class=p>()</span> <span class=p>{</span>
-</span></span><span class=line><span class=cl>  <span class=n>TORCH_CHECK</span><span class=p>(</span><span class=n>hooks</span><span class=p>,</span> <span class=s>&#34;Support for autograd has not been loaded; have you linked against libtorch.so?&#34;</span><span class=p>)</span>
-</span></span><span class=line><span class=cl>  <span class=k>return</span> <span class=n>hooks</span><span class=p>;</span>
-</span></span><span class=line><span class=cl><span class=p>}</span>
-</span></span><span class=line><span class=cl><span class=p>}}</span> <span class=c1>// namespace at::impl
-</span></span></span></code></pre></div><p>VariableHooksInterface 类定义了一些虚函数，包括：</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl> <span class=k>virtual</span> <span class=kt>void</span> <span class=nf>_backward</span><span class=p>(</span><span class=k>const</span> <span class=n>Tensor</span><span class=o>&amp;</span><span class=p>,</span> <span class=n>TensorList</span><span class=p>,</span> <span class=k>const</span> <span class=n>c10</span><span class=o>::</span><span class=n>optional</span><span class=o>&lt;</span><span class=n>Tensor</span><span class=o>&gt;&amp;</span><span class=p>,</span> <span class=n>c10</span><span class=o>::</span><span class=n>optional</span><span class=o>&lt;</span><span class=kt>bool</span><span class=o>&gt;</span><span class=p>,</span> <span class=kt>bool</span><span class=p>)</span> <span class=k>const</span> <span class=o>=</span> <span class=mi>0</span><span class=p>;</span>
-</span></span></code></pre></div><p>VariableHooks 结构体继承自 VariableHooksInterface ，有如下函数：</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=kt>void</span> <span class=n>VariableHooks</span><span class=o>::</span><span class=n>_backward</span><span class=p>(</span>
-</span></span><span class=line><span class=cl>    <span class=k>const</span> <span class=n>Tensor</span><span class=o>&amp;</span> <span class=n>self</span><span class=p>,</span>
-</span></span><span class=line><span class=cl>    <span class=n>at</span><span class=o>::</span><span class=n>TensorList</span> <span class=n>inputs</span><span class=p>,</span>
-</span></span><span class=line><span class=cl>    <span class=k>const</span> <span class=n>c10</span><span class=o>::</span><span class=n>optional</span><span class=o>&lt;</span><span class=n>Tensor</span><span class=o>&gt;&amp;</span> <span class=n>gradient</span><span class=p>,</span>
-</span></span><span class=line><span class=cl>    <span class=n>c10</span><span class=o>::</span><span class=n>optional</span><span class=o>&lt;</span><span class=kt>bool</span><span class=o>&gt;</span> <span class=n>keep_graph</span><span class=p>,</span>
-</span></span><span class=line><span class=cl>    <span class=kt>bool</span> <span class=n>create_graph</span><span class=p>)</span> <span class=k>const</span> <span class=p>{</span>
-</span></span><span class=line><span class=cl>  <span class=c1>// TODO torch::autograd::backward should take the c10::optional&lt;Tensor&gt; gradient directly
-</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// instead of us having to unwrap it to Tensor _gradient here.
-</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=n>Tensor</span> <span class=n>_gradient</span> <span class=o>=</span> <span class=n>gradient</span><span class=p>.</span><span class=n>has_value</span><span class=p>()</span> <span class=o>?</span> <span class=o>*</span><span class=nl>gradient</span> <span class=p>:</span> <span class=n>Tensor</span><span class=p>();</span>
-</span></span><span class=line><span class=cl>  <span class=n>std</span><span class=o>::</span><span class=n>vector</span><span class=o>&lt;</span><span class=n>torch</span><span class=o>::</span><span class=n>autograd</span><span class=o>::</span><span class=n>Variable</span><span class=o>&gt;</span> <span class=n>input_vars</span><span class=p>(</span><span class=n>inputs</span><span class=p>.</span><span class=n>begin</span><span class=p>(),</span> <span class=n>inputs</span><span class=p>.</span><span class=n>end</span><span class=p>());</span>
-</span></span><span class=line><span class=cl>  <span class=n>torch</span><span class=o>::</span><span class=n>autograd</span><span class=o>::</span><span class=n>backward</span><span class=p>({</span><span class=n>self</span><span class=p>},</span> <span class=p>{</span><span class=n>_gradient</span><span class=p>},</span> <span class=n>keep_graph</span><span class=p>,</span> <span class=n>create_graph</span><span class=p>,</span> <span class=n>input_vars</span><span class=p>);</span>
-</span></span><span class=line><span class=cl><span class=p>}</span>
-</span></span></code></pre></div><p>反向传播过程来到了命名空间 torch::autograd 下。</p><p>计算图实现：
+<!DOCTYPE html>
+<html lang="zh" dir="auto">
+
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>自动微分张量库 | K&#39;s blog</title>
+<meta name="keywords" content="PyTorch">
+<meta name="description" content="自动微分张量库">
+<meta name="author" content="luokai">
+<link rel="canonical" href="https://luokai.tech/posts/pytorch_read/autograd/">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.1198b75e51d35b5b7d65621cd91bb8972beea3ec5e25ffa5777e6c311a24d49d.css" integrity="sha256-EZi3XlHTW1t9ZWIc2Ru4lyvuo&#43;xeJf&#43;ld35sMRok1J0=" rel="preload stylesheet" as="style">
+<script defer crossorigin="anonymous" src="/assets/js/highlight.f413e19d0714851f6474e7ee9632408e58ac146fbdbe62747134bea2fa3415e0.js" integrity="sha256-9BPhnQcUhR9kdOfuljJAjlisFG&#43;9vmJ0cTS&#43;ovo0FeA="
+    onload="hljs.initHighlightingOnLoad();"></script>
+<link rel="icon" href="https://luokai.tech/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://luokai.tech/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://luokai.tech/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://luokai.tech/apple-touch-icon.png">
+<link rel="mask-icon" href="https://luokai.tech/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --hljs-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-track {
+                background: 0 0;
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-thumb {
+                border-color: var(--theme);
+            }
+        }
+
+    </style>
+</noscript>
+<script type="application/javascript">
+var doNotTrack = false;
+if (!doNotTrack) {
+	(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	})(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+	ga('create', 'UA-67470195-2', 'auto');
+	
+	ga('send', 'pageview');
+}
+</script><meta property="og:title" content="自动微分张量库" />
+<meta property="og:description" content="自动微分张量库" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://luokai.tech/posts/pytorch_read/autograd/" /><meta property="og:image" content="https://luokai.tech/%3Clink%20or%20path%20of%20image%20for%20opengraph,%20twitter-cards%3E"/><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-02-11T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-02-11T00:00:00+00:00" /><meta property="og:site_name" content="K&#39;s blog" />
+
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://luokai.tech/%3Clink%20or%20path%20of%20image%20for%20opengraph,%20twitter-cards%3E"/>
+
+<meta name="twitter:title" content="自动微分张量库"/>
+<meta name="twitter:description" content="自动微分张量库"/>
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position":  1 ,
+      "name": "Posts",
+      "item": "https://luokai.tech/posts/"
+    }, 
+    {
+      "@type": "ListItem",
+      "position":  2 ,
+      "name": "自动微分张量库",
+      "item": "https://luokai.tech/posts/pytorch_read/autograd/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "自动微分张量库",
+  "name": "自动微分张量库",
+  "description": "自动微分张量库",
+  "keywords": [
+    "PyTorch"
+  ],
+  "articleBody": "自动微分张量库是 PyTorch 的重要功能，本篇从整体流程的角度看一下相关实现。\n——————\nAPI 自动微分 C++ api 示例如下:\n#include #include int main() { auto x = torch::ones({2, 2}, torch::dtype(torch::kFloat32).device(torch::kCUDA, 0).requires_grad(true)); auto y = x * 2; auto out = y.sum(); out.backward(); std::cout \u003c\u003c x.grad() \u003c\u003c std::endl; } 张量存储 张量接口定义可以在 aten/src/ATen/core/TensorBody.h 看到，Tensor 类含有大量自动生成的代码，可以进行算子调用。\nTensor 类继承自 TensorBase 类，张量相关的大量函数调用自父类 TensorBase ，TensorBase 类有一个关键的成员变量：\nprotected: c10::intrusive_ptr\u003cTensorImpl, UndefinedTensorImpl\u003e impl_; TensorImpl 类为张量的底层表示，包含了实际的数据指针和用以描述张量的元数据，它继承自 c10::intrusive_ptr_target，intrusive_ptr_target 是 c10 模块的侵入式指针模块。\nPyTorch 实现了一个侵入式指针来替代 C++ 的 shared_ptr，shared_ptr 使用时需要创建单独的对象进行引用计数，而侵入式指针在使用的类中进行引用计数，所以侵入式指针具有更好的性能。\n使用侵入式指针的类都需要实现引用计数的函数，在这里则是都需要继承 c10::intrusive_ptr_target 类，intrusive_ptr_target 有如下两个成员变量，refcount_ 记录引用计数，weakcount_ 记录弱引用计数，弱引用计数可以处理循环引用的问题：\nmutable std::atomic\u003csize_t\u003e refcount_; mutable std::atomic\u003csize_t\u003e weakcount_; TensorImpl 有一个 Storage 类的成员变量，Storage 有如下成员变量：\nprotected: c10::intrusive_ptr\u003cStorageImpl\u003e storage_impl_; StorageImpl 继承了 c10::intrusive_ptr_target, 是实质上的底层数据类，保存了原始数据指针，对于 Storage 类的设计官方备注是继承自原始的 Torch7 项目，倾向于去掉此模块的设计，但是比较麻烦没人有空做。\nVariable 与 Tensor 在较新版本的 PyTorch 中，Variable 与 Tensor 进行了合并，有如下的命名空间定义：\nusing torch::autograd::Variable = at::Tensor 不过由于兼容性考虑，并没有完全去掉 Variable 相关的 api 。\n自动梯度 开头的示例中，backward 函数的调用会进行反向传播：\nvoid backward(const Tensor \u0026 gradient={}, c10::optional\u003cbool\u003e retain_graph=c10::nullopt, bool create_graph=false, c10::optional\u003cTensorList\u003e inputs=c10::nullopt) const { // NB: Adding this wrapper to _backward here because we'd like our // 'backwards' api to accept the 'inputs' argument optionally. Since code gen // currently does not support optional of TensorList our approach is to replace // backward in native_functions.yaml with _backward and call it here instead. if (inputs.has_value()) { TORCH_CHECK(inputs.value().size() \u003e 0, \"'inputs' argument to backward cannot be empty\") this-\u003e_backward(inputs.value(), gradient, retain_graph, create_graph); } else { this-\u003e_backward({}, gradient, retain_graph, create_graph); } } void Tensor::_backward(TensorList inputs, const c10::optional\u003cTensor\u003e\u0026 gradient, c10::optional\u003cbool\u003e keep_graph, bool create_graph) const { return impl::GetVariableHooks()-\u003e_backward(*this, inputs, gradient, keep_graph, create_graph); } namespace at { namespace impl { namespace { VariableHooksInterface* hooks = nullptr; } void SetVariableHooks(VariableHooksInterface* h) { hooks = h; } VariableHooksInterface* GetVariableHooks() { TORCH_CHECK(hooks, \"Support for autograd has not been loaded; have you linked against libtorch.so?\") return hooks; } }} // namespace at::impl VariableHooksInterface 类定义了一些虚函数，包括：\nvirtual void _backward(const Tensor\u0026, TensorList, const c10::optional\u003cTensor\u003e\u0026, c10::optional\u003cbool\u003e, bool) const = 0; VariableHooks 结构体继承自 VariableHooksInterface ，有如下函数：\nvoid VariableHooks::_backward( const Tensor\u0026 self, at::TensorList inputs, const c10::optional\u003cTensor\u003e\u0026 gradient, c10::optional\u003cbool\u003e keep_graph, bool create_graph) const { // TODO torch::autograd::backward should take the c10::optional gradient directly // instead of us having to unwrap it to Tensor _gradient here. Tensor _gradient = gradient.has_value() ? *gradient : Tensor(); std::vector\u003ctorch::autograd::Variable\u003e input_vars(inputs.begin(), inputs.end()); torch::autograd::backward({self}, {_gradient}, keep_graph, create_graph, input_vars); } 反向传播过程来到了命名空间 torch::autograd 下。\n计算图实现： Node： 计算图的点，对计算操作的抽象，接受0个或者多个输入，产生0个或者多个输出。 成员变量 edge_list next_edges_, 记录 Node 输出指向的 Edge。\nedge： 计算图的边，Node 之间连接关系的抽象。 成员变量 std::shared_ptr function，记录边指向的点。 成员变量 uint32_t input_nr，记录边是指向点的第几个输入。\n动态图： pytorch 的计算图是动态生成的 Q = X - Y\nTensorBody.h 里面的内联函数\n// aten::sub.Tensor(Tensor self, Tensor other, *, Scalar alpha=1) -\u003e Tensor inline at::Tensor Tensor::sub(const at::Tensor \u0026 other, const at::Scalar \u0026 alpha) const { return at::_ops::sub_Tensor::call(const_cast\u003cTensor\u0026\u003e(*this), other, alpha); } cmake-build-debug-wsl-clang/aten/src/ATen/ops/sub_ops.h 里面有自动脚本生成的一个结构体声明\nstruct TORCH_API sub_Tensor { using schema = at::Tensor (const at::Tensor \u0026, const at::Tensor \u0026, const at::Scalar \u0026); using ptr_schema = schema*; // See Note [static constexpr char* members for windows NVCC] STATIC_CONSTEXPR_STR_INL_EXCEPT_WIN_CUDA(name, \"aten::sub\") STATIC_CONSTEXPR_STR_INL_EXCEPT_WIN_CUDA(overload_name, \"Tensor\") STATIC_CONSTEXPR_STR_INL_EXCEPT_WIN_CUDA(schema_str, \"sub.Tensor(Tensor self, Tensor other, *, Scalar alpha=1) -\u003e Tensor\") static at::Tensor call(const at::Tensor \u0026 self, const at::Tensor \u0026 other, const at::Scalar \u0026 alpha); static at::Tensor redispatch(c10::DispatchKeySet dispatchKeySet, const at::Tensor \u0026 self, const at::Tensor \u0026 other, const at::Scalar \u0026 alpha); }; // ... #define STATIC_CONSTEXPR_STR_INL_EXCEPT_WIN_CUDA(field, val) \\ static constexpr const char* field = val; aten/src/ATen/Operators_4.cpp 实现\n// aten::sub.Tensor(Tensor self, Tensor other, *, Scalar alpha=1) -\u003e Tensor static C10_NOINLINE c10::TypedOperatorHandle\u003csub_Tensor::schema\u003e create_sub_Tensor_typed_handle() { return c10::Dispatcher::singleton() .findSchemaOrThrow(sub_Tensor::name, sub_Tensor::overload_name) .typed\u003csub_Tensor::schema\u003e(); } // aten::sub.Tensor(Tensor self, Tensor other, *, Scalar alpha=1) -\u003e Tensor at::Tensor sub_Tensor::call(const at::Tensor \u0026 self, const at::Tensor \u0026 other, const at::Scalar \u0026 alpha) { static auto op = create_sub_Tensor_typed_handle(); return op.call(self, other, alpha); } // aten::sub.Tensor(Tensor self, Tensor other, *, Scalar alpha=1) -\u003e Tensor at::Tensor sub_Tensor::redispatch(c10::DispatchKeySet dispatchKeySet, const at::Tensor \u0026 self, const at::Tensor \u0026 other, const at::Scalar \u0026 alpha) { static auto op = create_sub_Tensor_typed_handle(); return op.redispatch(dispatchKeySet, self, other, alpha); } dispatch 的逻辑…\nautograd 不是tensor的必需模块，\n",
+  "wordCount" : "587",
+  "inLanguage": "zh",
+  "datePublished": "2023-02-11T00:00:00Z",
+  "dateModified": "2023-02-11T00:00:00Z",
+  "author":{
+    "@type": "Person",
+    "name": "luokai"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://luokai.tech/posts/pytorch_read/autograd/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "K's blog",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://luokai.tech/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+
+<body class="" id="top">
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.body.classList.add('dark');
+    } else if (localStorage.getItem("pref-theme") === "light") {
+        document.body.classList.remove('dark')
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.body.classList.add('dark');
+    }
+
+</script>
+
+<header class="header">
+    <nav class="nav">
+        <div class="logo">
+            <a href="https://luokai.tech/" accesskey="h" title="K&#39;s blog (Alt + H)">K&#39;s blog</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" accesskey="t" title="(Alt + T)">
+                    <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu">
+            <li>
+                <a href="https://luokai.tech/categories" title="分类">
+                    <span>分类</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://luokai.tech/tags" title="标签">
+                    <span>标签</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://luokai.tech/search" title="搜索">
+                    <span>搜索</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://luokai.tech/archives" title="归档">
+                    <span>归档</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    <div class="breadcrumbs"><a href="https://luokai.tech/">主页</a>&nbsp;»&nbsp;<a href="https://luokai.tech/posts/">Posts</a></div>
+    <h1 class="post-title">
+      自动微分张量库<sup><span class="entry-isdraft">&nbsp;&nbsp;[draft]</span></sup>
+    </h1>
+    <div class="post-description">
+      自动微分张量库
+    </div>
+    <div class="post-meta"><span title='2023-02-11 00:00:00 +0000 UTC'>2023-11-11</span>&nbsp;·&nbsp;587 字&nbsp;·&nbsp;luokai
+
+</div>
+  </header> <aside id="toc-container" class="toc-container wide">
+    <div class="toc">
+        <details  open>
+            <summary accesskey="c" title="(Alt + C)">
+                <span class="details">目录</span>
+            </summary>
+
+            <div class="inner"><ul>
+                    <li>
+                        <a href="#api" aria-label="API">API</a></li>
+                    <li>
+                        <a href="#%e5%bc%a0%e9%87%8f%e5%ad%98%e5%82%a8" aria-label="张量存储">张量存储</a></li>
+                    <li>
+                        <a href="#variable-%e4%b8%8e-tensor" aria-label="Variable 与 Tensor">Variable 与 Tensor</a></li>
+                    <li>
+                        <a href="#%e8%87%aa%e5%8a%a8%e6%a2%af%e5%ba%a6" aria-label="自动梯度">自动梯度</a>
+                    </li>
+                </ul>
+            </div>
+        </details>
+    </div>
+</aside>
+<script>
+    let activeElement;
+    let elements;
+    window.addEventListener('DOMContentLoaded', function (event) {
+        checkTocPosition();
+
+        elements = document.querySelectorAll('h1[id],h2[id],h3[id],h4[id],h5[id],h6[id]');
+         
+         activeElement = elements[0];
+         const id = encodeURI(activeElement.getAttribute('id')).toLowerCase();
+         document.querySelector(`.inner ul li a[href="#${id}"]`).classList.add('active');
+     }, false);
+
+    window.addEventListener('resize', function(event) {
+        checkTocPosition();
+    }, false);
+
+    window.addEventListener('scroll', () => {
+        
+        activeElement = Array.from(elements).find((element) => {
+            if ((getOffsetTop(element) - window.pageYOffset) > 0 && 
+                (getOffsetTop(element) - window.pageYOffset) < window.innerHeight/2) {
+                return element;
+            }
+        }) || activeElement
+
+        elements.forEach(element => {
+             const id = encodeURI(element.getAttribute('id')).toLowerCase();
+             if (element === activeElement){
+                 document.querySelector(`.inner ul li a[href="#${id}"]`).classList.add('active');
+             } else {
+                 document.querySelector(`.inner ul li a[href="#${id}"]`).classList.remove('active');
+             }
+         })
+     }, false);
+
+    const main = parseInt(getComputedStyle(document.body).getPropertyValue('--article-width'), 10);
+    const toc = parseInt(getComputedStyle(document.body).getPropertyValue('--toc-width'), 10);
+    const gap = parseInt(getComputedStyle(document.body).getPropertyValue('--gap'), 10);
+
+    function checkTocPosition() {
+        const width = document.body.scrollWidth;
+
+        if (width - main - (toc * 2) - (gap * 4) > 0) {
+            document.getElementById("toc-container").classList.add("wide");
+        } else {
+            document.getElementById("toc-container").classList.remove("wide");
+        }
+    }
+
+    function getOffsetTop(element) {
+        if (!element.getClientRects().length) {
+            return 0;
+        }
+        let rect = element.getBoundingClientRect();
+        let win = element.ownerDocument.defaultView;
+        return rect.top + win.pageYOffset;   
+    }
+</script>
+  <div class="post-content"><p>自动微分张量库是 PyTorch 的重要功能，本篇从整体流程的角度看一下相关实现。<br>
+——————</p>
+<h2 id="api">API<a hidden class="anchor" aria-hidden="true" href="#api">#</a></h2>
+<p>自动微分 C++ api 示例如下:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;torch/torch.h&gt;</span><span class="cp">
+</span></span></span><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;iostream&gt;</span><span class="cp">
+</span></span></span><span class="line"><span class="cl"><span class="cp"></span>
+</span></span><span class="line"><span class="cl"><span class="kt">int</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="k">auto</span> <span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">::</span><span class="n">ones</span><span class="p">({</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">},</span> <span class="n">torch</span><span class="o">::</span><span class="n">dtype</span><span class="p">(</span><span class="n">torch</span><span class="o">::</span><span class="n">kFloat32</span><span class="p">).</span><span class="n">device</span><span class="p">(</span><span class="n">torch</span><span class="o">::</span><span class="n">kCUDA</span><span class="p">,</span> <span class="mi">0</span><span class="p">).</span><span class="n">requires_grad</span><span class="p">(</span><span class="nb">true</span><span class="p">));</span>
+</span></span><span class="line"><span class="cl">  <span class="k">auto</span> <span class="n">y</span> <span class="o">=</span> <span class="n">x</span> <span class="o">*</span> <span class="mi">2</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">  <span class="k">auto</span> <span class="n">out</span> <span class="o">=</span> <span class="n">y</span><span class="p">.</span><span class="n">sum</span><span class="p">();</span>
+</span></span><span class="line"><span class="cl">  <span class="n">out</span><span class="p">.</span><span class="n">backward</span><span class="p">();</span>
+</span></span><span class="line"><span class="cl">  <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">x</span><span class="p">.</span><span class="n">grad</span><span class="p">()</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre></div><h2 id="张量存储">张量存储<a hidden class="anchor" aria-hidden="true" href="#张量存储">#</a></h2>
+<p>张量接口定义可以在 aten/src/ATen/core/TensorBody.h 看到，Tensor 类含有大量自动生成的代码，可以进行算子调用。<br>
+Tensor 类继承自 TensorBase 类，张量相关的大量函数调用自父类 TensorBase ，TensorBase 类有一个关键的成员变量：</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="k">protected</span><span class="o">:</span>
+</span></span><span class="line"><span class="cl">  <span class="n">c10</span><span class="o">::</span><span class="n">intrusive_ptr</span><span class="o">&lt;</span><span class="n">TensorImpl</span><span class="p">,</span> <span class="n">UndefinedTensorImpl</span><span class="o">&gt;</span> <span class="n">impl_</span><span class="p">;</span>
+</span></span></code></pre></div><p>TensorImpl 类为张量的底层表示，包含了实际的数据指针和用以描述张量的元数据，它继承自 c10::intrusive_ptr_target，intrusive_ptr_target 是 c10 模块的侵入式指针模块。<br>
+PyTorch 实现了一个侵入式指针来替代 C++ 的 shared_ptr，shared_ptr 使用时需要创建单独的对象进行引用计数，而侵入式指针在使用的类中进行引用计数，所以侵入式指针具有更好的性能。<br>
+使用侵入式指针的类都需要实现引用计数的函数，在这里则是都需要继承 c10::intrusive_ptr_target 类，intrusive_ptr_target 有如下两个成员变量，refcount_ 记录引用计数，weakcount_ 记录弱引用计数，弱引用计数可以处理循环引用的问题：</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl">  <span class="k">mutable</span> <span class="n">std</span><span class="o">::</span><span class="n">atomic</span><span class="o">&lt;</span><span class="n">size_t</span><span class="o">&gt;</span> <span class="n">refcount_</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">  <span class="k">mutable</span> <span class="n">std</span><span class="o">::</span><span class="n">atomic</span><span class="o">&lt;</span><span class="n">size_t</span><span class="o">&gt;</span> <span class="n">weakcount_</span><span class="p">;</span>
+</span></span></code></pre></div><p>TensorImpl 有一个 Storage 类的成员变量，Storage 有如下成员变量：</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"> <span class="k">protected</span><span class="o">:</span>
+</span></span><span class="line"><span class="cl">  <span class="n">c10</span><span class="o">::</span><span class="n">intrusive_ptr</span><span class="o">&lt;</span><span class="n">StorageImpl</span><span class="o">&gt;</span> <span class="n">storage_impl_</span><span class="p">;</span>
+</span></span></code></pre></div><p>StorageImpl 继承了 c10::intrusive_ptr_target, 是实质上的底层数据类，保存了原始数据指针，对于 Storage 类的设计官方备注是继承自原始的 Torch7 项目，倾向于去掉此模块的设计，但是比较麻烦没人有空做。</p>
+<h2 id="variable-与-tensor">Variable 与 Tensor<a hidden class="anchor" aria-hidden="true" href="#variable-与-tensor">#</a></h2>
+<p>在较新版本的 PyTorch 中，Variable 与 Tensor 进行了合并，有如下的命名空间定义：</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="k">using</span> <span class="n">torch</span><span class="o">::</span><span class="n">autograd</span><span class="o">::</span><span class="n">Variable</span> <span class="o">=</span> <span class="n">at</span><span class="o">::</span><span class="n">Tensor</span>
+</span></span></code></pre></div><p>不过由于兼容性考虑，并没有完全去掉 Variable 相关的 api 。</p>
+<h2 id="自动梯度">自动梯度<a hidden class="anchor" aria-hidden="true" href="#自动梯度">#</a></h2>
+<p>开头的示例中，backward 函数的调用会进行反向传播：</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl">  <span class="kt">void</span> <span class="nf">backward</span><span class="p">(</span><span class="k">const</span> <span class="n">Tensor</span> <span class="o">&amp;</span> <span class="n">gradient</span><span class="o">=</span><span class="p">{},</span> <span class="n">c10</span><span class="o">::</span><span class="n">optional</span><span class="o">&lt;</span><span class="kt">bool</span><span class="o">&gt;</span> <span class="n">retain_graph</span><span class="o">=</span><span class="n">c10</span><span class="o">::</span><span class="n">nullopt</span><span class="p">,</span> <span class="kt">bool</span> <span class="n">create_graph</span><span class="o">=</span><span class="nb">false</span><span class="p">,</span> <span class="n">c10</span><span class="o">::</span><span class="n">optional</span><span class="o">&lt;</span><span class="n">TensorList</span><span class="o">&gt;</span> <span class="n">inputs</span><span class="o">=</span><span class="n">c10</span><span class="o">::</span><span class="n">nullopt</span><span class="p">)</span> <span class="k">const</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="c1">// NB: Adding this wrapper to _backward here because we&#39;d like our
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="c1">// &#39;backwards&#39; api to accept the &#39;inputs&#39; argument optionally. Since code gen
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="c1">// currently does not support optional of TensorList our approach is to replace
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="c1">// backward in native_functions.yaml with _backward and call it here instead.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="k">if</span> <span class="p">(</span><span class="n">inputs</span><span class="p">.</span><span class="n">has_value</span><span class="p">())</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">      <span class="n">TORCH_CHECK</span><span class="p">(</span><span class="n">inputs</span><span class="p">.</span><span class="n">value</span><span class="p">().</span><span class="n">size</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="s">&#34;&#39;inputs&#39; argument to backward cannot be empty&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">      <span class="k">this</span><span class="o">-&gt;</span><span class="n">_backward</span><span class="p">(</span><span class="n">inputs</span><span class="p">.</span><span class="n">value</span><span class="p">(),</span> <span class="n">gradient</span><span class="p">,</span> <span class="n">retain_graph</span><span class="p">,</span> <span class="n">create_graph</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">      <span class="k">this</span><span class="o">-&gt;</span><span class="n">_backward</span><span class="p">({},</span> <span class="n">gradient</span><span class="p">,</span> <span class="n">retain_graph</span><span class="p">,</span> <span class="n">create_graph</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">  <span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kt">void</span> <span class="n">Tensor</span><span class="o">::</span><span class="n">_backward</span><span class="p">(</span><span class="n">TensorList</span> <span class="n">inputs</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">        <span class="k">const</span> <span class="n">c10</span><span class="o">::</span><span class="n">optional</span><span class="o">&lt;</span><span class="n">Tensor</span><span class="o">&gt;&amp;</span> <span class="n">gradient</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">        <span class="n">c10</span><span class="o">::</span><span class="n">optional</span><span class="o">&lt;</span><span class="kt">bool</span><span class="o">&gt;</span> <span class="n">keep_graph</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">        <span class="kt">bool</span> <span class="n">create_graph</span><span class="p">)</span> <span class="k">const</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="k">return</span> <span class="n">impl</span><span class="o">::</span><span class="n">GetVariableHooks</span><span class="p">()</span><span class="o">-&gt;</span><span class="n">_backward</span><span class="p">(</span><span class="o">*</span><span class="k">this</span><span class="p">,</span> <span class="n">inputs</span><span class="p">,</span> <span class="n">gradient</span><span class="p">,</span> <span class="n">keep_graph</span><span class="p">,</span> <span class="n">create_graph</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">namespace</span> <span class="n">at</span> <span class="p">{</span> <span class="k">namespace</span> <span class="n">impl</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl"><span class="k">namespace</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl"><span class="n">VariableHooksInterface</span><span class="o">*</span> <span class="n">hooks</span> <span class="o">=</span> <span class="k">nullptr</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="kt">void</span> <span class="nf">SetVariableHooks</span><span class="p">(</span><span class="n">VariableHooksInterface</span><span class="o">*</span> <span class="n">h</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="n">hooks</span> <span class="o">=</span> <span class="n">h</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="n">VariableHooksInterface</span><span class="o">*</span> <span class="nf">GetVariableHooks</span><span class="p">()</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="n">TORCH_CHECK</span><span class="p">(</span><span class="n">hooks</span><span class="p">,</span> <span class="s">&#34;Support for autograd has not been loaded; have you linked against libtorch.so?&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">  <span class="k">return</span> <span class="n">hooks</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="p">}}</span> <span class="c1">// namespace at::impl
+</span></span></span></code></pre></div><p>VariableHooksInterface 类定义了一些虚函数，包括：</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"> <span class="k">virtual</span> <span class="kt">void</span> <span class="nf">_backward</span><span class="p">(</span><span class="k">const</span> <span class="n">Tensor</span><span class="o">&amp;</span><span class="p">,</span> <span class="n">TensorList</span><span class="p">,</span> <span class="k">const</span> <span class="n">c10</span><span class="o">::</span><span class="n">optional</span><span class="o">&lt;</span><span class="n">Tensor</span><span class="o">&gt;&amp;</span><span class="p">,</span> <span class="n">c10</span><span class="o">::</span><span class="n">optional</span><span class="o">&lt;</span><span class="kt">bool</span><span class="o">&gt;</span><span class="p">,</span> <span class="kt">bool</span><span class="p">)</span> <span class="k">const</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+</span></span></code></pre></div><p>VariableHooks 结构体继承自 VariableHooksInterface ，有如下函数：</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="kt">void</span> <span class="n">VariableHooks</span><span class="o">::</span><span class="n">_backward</span><span class="p">(</span>
+</span></span><span class="line"><span class="cl">    <span class="k">const</span> <span class="n">Tensor</span><span class="o">&amp;</span> <span class="n">self</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="n">at</span><span class="o">::</span><span class="n">TensorList</span> <span class="n">inputs</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="k">const</span> <span class="n">c10</span><span class="o">::</span><span class="n">optional</span><span class="o">&lt;</span><span class="n">Tensor</span><span class="o">&gt;&amp;</span> <span class="n">gradient</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="n">c10</span><span class="o">::</span><span class="n">optional</span><span class="o">&lt;</span><span class="kt">bool</span><span class="o">&gt;</span> <span class="n">keep_graph</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="kt">bool</span> <span class="n">create_graph</span><span class="p">)</span> <span class="k">const</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="c1">// TODO torch::autograd::backward should take the c10::optional&lt;Tensor&gt; gradient directly
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>  <span class="c1">// instead of us having to unwrap it to Tensor _gradient here.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>  <span class="n">Tensor</span> <span class="n">_gradient</span> <span class="o">=</span> <span class="n">gradient</span><span class="p">.</span><span class="n">has_value</span><span class="p">()</span> <span class="o">?</span> <span class="o">*</span><span class="nl">gradient</span> <span class="p">:</span> <span class="n">Tensor</span><span class="p">();</span>
+</span></span><span class="line"><span class="cl">  <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">torch</span><span class="o">::</span><span class="n">autograd</span><span class="o">::</span><span class="n">Variable</span><span class="o">&gt;</span> <span class="n">input_vars</span><span class="p">(</span><span class="n">inputs</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span> <span class="n">inputs</span><span class="p">.</span><span class="n">end</span><span class="p">());</span>
+</span></span><span class="line"><span class="cl">  <span class="n">torch</span><span class="o">::</span><span class="n">autograd</span><span class="o">::</span><span class="n">backward</span><span class="p">({</span><span class="n">self</span><span class="p">},</span> <span class="p">{</span><span class="n">_gradient</span><span class="p">},</span> <span class="n">keep_graph</span><span class="p">,</span> <span class="n">create_graph</span><span class="p">,</span> <span class="n">input_vars</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre></div><p>反向传播过程来到了命名空间 torch::autograd 下。</p>
+<p>计算图实现：
 Node：
 计算图的点，对计算操作的抽象，接受0个或者多个输入，产生0个或者多个输出。
-成员变量 edge_list next_edges_, 记录 Node 输出指向的 Edge。</p><p>edge：
+成员变量 edge_list next_edges_, 记录 Node 输出指向的 Edge。</p>
+<p>edge：
 计算图的边，Node 之间连接关系的抽象。
-成员变量 std::shared_ptr function，记录边指向的点。
-成员变量 uint32_t input_nr，记录边是指向点的第几个输入。</p><p>动态图：
+成员变量 std::shared_ptr<!-- raw HTML omitted --> function，记录边指向的点。
+成员变量 uint32_t input_nr，记录边是指向点的第几个输入。</p>
+<p>动态图：
 pytorch 的计算图是动态生成的
-Q = X - Y</p><p>TensorBody.h 里面的内联函数</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=c1>// aten::sub.Tensor(Tensor self, Tensor other, *, Scalar alpha=1) -&gt; Tensor
-</span></span></span><span class=line><span class=cl><span class=c1></span><span class=kr>inline</span> <span class=n>at</span><span class=o>::</span><span class=n>Tensor</span> <span class=n>Tensor</span><span class=o>::</span><span class=n>sub</span><span class=p>(</span><span class=k>const</span> <span class=n>at</span><span class=o>::</span><span class=n>Tensor</span> <span class=o>&amp;</span> <span class=n>other</span><span class=p>,</span> <span class=k>const</span> <span class=n>at</span><span class=o>::</span><span class=n>Scalar</span> <span class=o>&amp;</span> <span class=n>alpha</span><span class=p>)</span> <span class=k>const</span> <span class=p>{</span>
-</span></span><span class=line><span class=cl>    <span class=k>return</span> <span class=n>at</span><span class=o>::</span><span class=n>_ops</span><span class=o>::</span><span class=n>sub_Tensor</span><span class=o>::</span><span class=n>call</span><span class=p>(</span><span class=k>const_cast</span><span class=o>&lt;</span><span class=n>Tensor</span><span class=o>&amp;&gt;</span><span class=p>(</span><span class=o>*</span><span class=k>this</span><span class=p>),</span> <span class=n>other</span><span class=p>,</span> <span class=n>alpha</span><span class=p>);</span>
-</span></span><span class=line><span class=cl><span class=p>}</span>
-</span></span></code></pre></div><p>cmake-build-debug-wsl-clang/aten/src/ATen/ops/sub_ops.h 里面有自动脚本生成的一个结构体声明</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=k>struct</span> <span class=nc>TORCH_API</span> <span class=n>sub_Tensor</span> <span class=p>{</span>
-</span></span><span class=line><span class=cl>  <span class=k>using</span> <span class=n>schema</span> <span class=o>=</span> <span class=n>at</span><span class=o>::</span><span class=n>Tensor</span> <span class=p>(</span><span class=k>const</span> <span class=n>at</span><span class=o>::</span><span class=n>Tensor</span> <span class=o>&amp;</span><span class=p>,</span> <span class=k>const</span> <span class=n>at</span><span class=o>::</span><span class=n>Tensor</span> <span class=o>&amp;</span><span class=p>,</span> <span class=k>const</span> <span class=n>at</span><span class=o>::</span><span class=n>Scalar</span> <span class=o>&amp;</span><span class=p>);</span>
-</span></span><span class=line><span class=cl>  <span class=k>using</span> <span class=n>ptr_schema</span> <span class=o>=</span> <span class=n>schema</span><span class=o>*</span><span class=p>;</span>
-</span></span><span class=line><span class=cl>  <span class=c1>// See Note [static constexpr char* members for windows NVCC]
-</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=n>STATIC_CONSTEXPR_STR_INL_EXCEPT_WIN_CUDA</span><span class=p>(</span><span class=n>name</span><span class=p>,</span> <span class=s>&#34;aten::sub&#34;</span><span class=p>)</span>
-</span></span><span class=line><span class=cl>  <span class=n>STATIC_CONSTEXPR_STR_INL_EXCEPT_WIN_CUDA</span><span class=p>(</span><span class=n>overload_name</span><span class=p>,</span> <span class=s>&#34;Tensor&#34;</span><span class=p>)</span>
-</span></span><span class=line><span class=cl>  <span class=n>STATIC_CONSTEXPR_STR_INL_EXCEPT_WIN_CUDA</span><span class=p>(</span><span class=n>schema_str</span><span class=p>,</span> <span class=s>&#34;sub.Tensor(Tensor self, Tensor other, *, Scalar alpha=1) -&gt; Tensor&#34;</span><span class=p>)</span>
-</span></span><span class=line><span class=cl>  <span class=k>static</span> <span class=n>at</span><span class=o>::</span><span class=n>Tensor</span> <span class=n>call</span><span class=p>(</span><span class=k>const</span> <span class=n>at</span><span class=o>::</span><span class=n>Tensor</span> <span class=o>&amp;</span> <span class=n>self</span><span class=p>,</span> <span class=k>const</span> <span class=n>at</span><span class=o>::</span><span class=n>Tensor</span> <span class=o>&amp;</span> <span class=n>other</span><span class=p>,</span> <span class=k>const</span> <span class=n>at</span><span class=o>::</span><span class=n>Scalar</span> <span class=o>&amp;</span> <span class=n>alpha</span><span class=p>);</span>
-</span></span><span class=line><span class=cl>  <span class=k>static</span> <span class=n>at</span><span class=o>::</span><span class=n>Tensor</span> <span class=n>redispatch</span><span class=p>(</span><span class=n>c10</span><span class=o>::</span><span class=n>DispatchKeySet</span> <span class=n>dispatchKeySet</span><span class=p>,</span> <span class=k>const</span> <span class=n>at</span><span class=o>::</span><span class=n>Tensor</span> <span class=o>&amp;</span> <span class=n>self</span><span class=p>,</span> <span class=k>const</span> <span class=n>at</span><span class=o>::</span><span class=n>Tensor</span> <span class=o>&amp;</span> <span class=n>other</span><span class=p>,</span> <span class=k>const</span> <span class=n>at</span><span class=o>::</span><span class=n>Scalar</span> <span class=o>&amp;</span> <span class=n>alpha</span><span class=p>);</span>
-</span></span><span class=line><span class=cl><span class=p>};</span>
-</span></span><span class=line><span class=cl><span class=c1>// ...
-</span></span></span><span class=line><span class=cl><span class=c1></span><span class=cp>#define STATIC_CONSTEXPR_STR_INL_EXCEPT_WIN_CUDA(field, val) \
-</span></span></span><span class=line><span class=cl><span class=cp>  static constexpr const char* field = val;
-</span></span></span></code></pre></div><p>aten/src/ATen/Operators_4.cpp 实现</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=c1>// aten::sub.Tensor(Tensor self, Tensor other, *, Scalar alpha=1) -&gt; Tensor
-</span></span></span><span class=line><span class=cl><span class=c1></span><span class=k>static</span> <span class=n>C10_NOINLINE</span> <span class=n>c10</span><span class=o>::</span><span class=n>TypedOperatorHandle</span><span class=o>&lt;</span><span class=n>sub_Tensor</span><span class=o>::</span><span class=n>schema</span><span class=o>&gt;</span> <span class=n>create_sub_Tensor_typed_handle</span><span class=p>()</span> <span class=p>{</span>
-</span></span><span class=line><span class=cl>  <span class=k>return</span> <span class=n>c10</span><span class=o>::</span><span class=n>Dispatcher</span><span class=o>::</span><span class=n>singleton</span><span class=p>()</span>
-</span></span><span class=line><span class=cl>      <span class=p>.</span><span class=n>findSchemaOrThrow</span><span class=p>(</span><span class=n>sub_Tensor</span><span class=o>::</span><span class=n>name</span><span class=p>,</span> <span class=n>sub_Tensor</span><span class=o>::</span><span class=n>overload_name</span><span class=p>)</span>
-</span></span><span class=line><span class=cl>      <span class=p>.</span><span class=n>typed</span><span class=o>&lt;</span><span class=n>sub_Tensor</span><span class=o>::</span><span class=n>schema</span><span class=o>&gt;</span><span class=p>();</span>
-</span></span><span class=line><span class=cl><span class=p>}</span>
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl><span class=c1>// aten::sub.Tensor(Tensor self, Tensor other, *, Scalar alpha=1) -&gt; Tensor
-</span></span></span><span class=line><span class=cl><span class=c1></span><span class=n>at</span><span class=o>::</span><span class=n>Tensor</span> <span class=n>sub_Tensor</span><span class=o>::</span><span class=n>call</span><span class=p>(</span><span class=k>const</span> <span class=n>at</span><span class=o>::</span><span class=n>Tensor</span> <span class=o>&amp;</span> <span class=n>self</span><span class=p>,</span> <span class=k>const</span> <span class=n>at</span><span class=o>::</span><span class=n>Tensor</span> <span class=o>&amp;</span> <span class=n>other</span><span class=p>,</span> <span class=k>const</span> <span class=n>at</span><span class=o>::</span><span class=n>Scalar</span> <span class=o>&amp;</span> <span class=n>alpha</span><span class=p>)</span> <span class=p>{</span>
-</span></span><span class=line><span class=cl>    
-</span></span><span class=line><span class=cl>    <span class=k>static</span> <span class=k>auto</span> <span class=n>op</span> <span class=o>=</span> <span class=n>create_sub_Tensor_typed_handle</span><span class=p>();</span>
-</span></span><span class=line><span class=cl>    <span class=k>return</span> <span class=n>op</span><span class=p>.</span><span class=n>call</span><span class=p>(</span><span class=n>self</span><span class=p>,</span> <span class=n>other</span><span class=p>,</span> <span class=n>alpha</span><span class=p>);</span>
-</span></span><span class=line><span class=cl><span class=p>}</span>
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl><span class=c1>// aten::sub.Tensor(Tensor self, Tensor other, *, Scalar alpha=1) -&gt; Tensor
-</span></span></span><span class=line><span class=cl><span class=c1></span><span class=n>at</span><span class=o>::</span><span class=n>Tensor</span> <span class=n>sub_Tensor</span><span class=o>::</span><span class=n>redispatch</span><span class=p>(</span><span class=n>c10</span><span class=o>::</span><span class=n>DispatchKeySet</span> <span class=n>dispatchKeySet</span><span class=p>,</span> <span class=k>const</span> <span class=n>at</span><span class=o>::</span><span class=n>Tensor</span> <span class=o>&amp;</span> <span class=n>self</span><span class=p>,</span> <span class=k>const</span> <span class=n>at</span><span class=o>::</span><span class=n>Tensor</span> <span class=o>&amp;</span> <span class=n>other</span><span class=p>,</span> <span class=k>const</span> <span class=n>at</span><span class=o>::</span><span class=n>Scalar</span> <span class=o>&amp;</span> <span class=n>alpha</span><span class=p>)</span> <span class=p>{</span>
-</span></span><span class=line><span class=cl>    
-</span></span><span class=line><span class=cl>    <span class=k>static</span> <span class=k>auto</span> <span class=n>op</span> <span class=o>=</span> <span class=n>create_sub_Tensor_typed_handle</span><span class=p>();</span>
-</span></span><span class=line><span class=cl>    <span class=k>return</span> <span class=n>op</span><span class=p>.</span><span class=n>redispatch</span><span class=p>(</span><span class=n>dispatchKeySet</span><span class=p>,</span> <span class=n>self</span><span class=p>,</span> <span class=n>other</span><span class=p>,</span> <span class=n>alpha</span><span class=p>);</span>
-</span></span><span class=line><span class=cl><span class=p>}</span>
-</span></span></code></pre></div><p>dispatch 的逻辑&mldr;</p><p>autograd 不是tensor的必需模块，</p></div><footer class=post-footer><ul class=post-tags><li><a href=https://luokai.tech/tags/pytorch/>PyTorch</a></li></ul><nav class=paginav><a class=prev href=https://luokai.tech/posts/pytorch_read/operators_call/><span class=title>« Prev</span><br><span>算子调用</span></a>
-<a class=next href=https://luokai.tech/posts/paper/occlusion_face/><span class=title>Next »</span><br><span>论文阅读笔记：遮挡环境下的面部识别概述</span></a></nav></footer></article></main><footer class=footer><span>&copy; 2023 <a href=https://luokai.tech/>K's blog</a></span>
-<span>Powered by
-<a href=https://gohugo.io/ rel="noopener noreferrer" target=_blank>Hugo</a> &
-        <a href=https://github.com/adityatelange/hugo-PaperMod/ rel=noopener target=_blank>PaperMod</a></span></footer><a href=#top aria-label="go to top" title="Go to Top (Alt + G)" class=top-link id=top-link accesskey=g><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentcolor"><path d="M12 6H0l6-6z"/></svg></a><script>let menu=document.getElementById("menu");menu&&(menu.scrollLeft=localStorage.getItem("menu-scroll-position"),menu.onscroll=function(){localStorage.setItem("menu-scroll-position",menu.scrollLeft)}),document.querySelectorAll('a[href^="#"]').forEach(e=>{e.addEventListener("click",function(e){e.preventDefault();var t=this.getAttribute("href").substr(1);window.matchMedia("(prefers-reduced-motion: reduce)").matches?document.querySelector(`[id='${decodeURIComponent(t)}']`).scrollIntoView():document.querySelector(`[id='${decodeURIComponent(t)}']`).scrollIntoView({behavior:"smooth"}),t==="top"?history.replaceState(null,null," "):history.pushState(null,null,`#${t}`)})})</script><script>var mybutton=document.getElementById("top-link");window.onscroll=function(){document.body.scrollTop>800||document.documentElement.scrollTop>800?(mybutton.style.visibility="visible",mybutton.style.opacity="1"):(mybutton.style.visibility="hidden",mybutton.style.opacity="0")}</script><script>document.getElementById("theme-toggle").addEventListener("click",()=>{document.body.className.includes("dark")?(document.body.classList.remove("dark"),localStorage.setItem("pref-theme","light")):(document.body.classList.add("dark"),localStorage.setItem("pref-theme","dark"))})</script></body></html>
+Q = X - Y</p>
+<p>TensorBody.h 里面的内联函数</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="c1">// aten::sub.Tensor(Tensor self, Tensor other, *, Scalar alpha=1) -&gt; Tensor
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kr">inline</span> <span class="n">at</span><span class="o">::</span><span class="n">Tensor</span> <span class="n">Tensor</span><span class="o">::</span><span class="n">sub</span><span class="p">(</span><span class="k">const</span> <span class="n">at</span><span class="o">::</span><span class="n">Tensor</span> <span class="o">&amp;</span> <span class="n">other</span><span class="p">,</span> <span class="k">const</span> <span class="n">at</span><span class="o">::</span><span class="n">Scalar</span> <span class="o">&amp;</span> <span class="n">alpha</span><span class="p">)</span> <span class="k">const</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">at</span><span class="o">::</span><span class="n">_ops</span><span class="o">::</span><span class="n">sub_Tensor</span><span class="o">::</span><span class="n">call</span><span class="p">(</span><span class="k">const_cast</span><span class="o">&lt;</span><span class="n">Tensor</span><span class="o">&amp;&gt;</span><span class="p">(</span><span class="o">*</span><span class="k">this</span><span class="p">),</span> <span class="n">other</span><span class="p">,</span> <span class="n">alpha</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre></div><p>cmake-build-debug-wsl-clang/aten/src/ATen/ops/sub_ops.h 里面有自动脚本生成的一个结构体声明</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="k">struct</span> <span class="nc">TORCH_API</span> <span class="n">sub_Tensor</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="k">using</span> <span class="n">schema</span> <span class="o">=</span> <span class="n">at</span><span class="o">::</span><span class="n">Tensor</span> <span class="p">(</span><span class="k">const</span> <span class="n">at</span><span class="o">::</span><span class="n">Tensor</span> <span class="o">&amp;</span><span class="p">,</span> <span class="k">const</span> <span class="n">at</span><span class="o">::</span><span class="n">Tensor</span> <span class="o">&amp;</span><span class="p">,</span> <span class="k">const</span> <span class="n">at</span><span class="o">::</span><span class="n">Scalar</span> <span class="o">&amp;</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">  <span class="k">using</span> <span class="n">ptr_schema</span> <span class="o">=</span> <span class="n">schema</span><span class="o">*</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">  <span class="c1">// See Note [static constexpr char* members for windows NVCC]
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>  <span class="n">STATIC_CONSTEXPR_STR_INL_EXCEPT_WIN_CUDA</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="s">&#34;aten::sub&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">  <span class="n">STATIC_CONSTEXPR_STR_INL_EXCEPT_WIN_CUDA</span><span class="p">(</span><span class="n">overload_name</span><span class="p">,</span> <span class="s">&#34;Tensor&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">  <span class="n">STATIC_CONSTEXPR_STR_INL_EXCEPT_WIN_CUDA</span><span class="p">(</span><span class="n">schema_str</span><span class="p">,</span> <span class="s">&#34;sub.Tensor(Tensor self, Tensor other, *, Scalar alpha=1) -&gt; Tensor&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">  <span class="k">static</span> <span class="n">at</span><span class="o">::</span><span class="n">Tensor</span> <span class="n">call</span><span class="p">(</span><span class="k">const</span> <span class="n">at</span><span class="o">::</span><span class="n">Tensor</span> <span class="o">&amp;</span> <span class="n">self</span><span class="p">,</span> <span class="k">const</span> <span class="n">at</span><span class="o">::</span><span class="n">Tensor</span> <span class="o">&amp;</span> <span class="n">other</span><span class="p">,</span> <span class="k">const</span> <span class="n">at</span><span class="o">::</span><span class="n">Scalar</span> <span class="o">&amp;</span> <span class="n">alpha</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">  <span class="k">static</span> <span class="n">at</span><span class="o">::</span><span class="n">Tensor</span> <span class="n">redispatch</span><span class="p">(</span><span class="n">c10</span><span class="o">::</span><span class="n">DispatchKeySet</span> <span class="n">dispatchKeySet</span><span class="p">,</span> <span class="k">const</span> <span class="n">at</span><span class="o">::</span><span class="n">Tensor</span> <span class="o">&amp;</span> <span class="n">self</span><span class="p">,</span> <span class="k">const</span> <span class="n">at</span><span class="o">::</span><span class="n">Tensor</span> <span class="o">&amp;</span> <span class="n">other</span><span class="p">,</span> <span class="k">const</span> <span class="n">at</span><span class="o">::</span><span class="n">Scalar</span> <span class="o">&amp;</span> <span class="n">alpha</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="p">};</span>
+</span></span><span class="line"><span class="cl"><span class="c1">// ...
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="cp">#define STATIC_CONSTEXPR_STR_INL_EXCEPT_WIN_CUDA(field, val) \
+</span></span></span><span class="line"><span class="cl"><span class="cp">  static constexpr const char* field = val;
+</span></span></span></code></pre></div><p>aten/src/ATen/Operators_4.cpp 实现</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="c1">// aten::sub.Tensor(Tensor self, Tensor other, *, Scalar alpha=1) -&gt; Tensor
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="k">static</span> <span class="n">C10_NOINLINE</span> <span class="n">c10</span><span class="o">::</span><span class="n">TypedOperatorHandle</span><span class="o">&lt;</span><span class="n">sub_Tensor</span><span class="o">::</span><span class="n">schema</span><span class="o">&gt;</span> <span class="n">create_sub_Tensor_typed_handle</span><span class="p">()</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="k">return</span> <span class="n">c10</span><span class="o">::</span><span class="n">Dispatcher</span><span class="o">::</span><span class="n">singleton</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">      <span class="p">.</span><span class="n">findSchemaOrThrow</span><span class="p">(</span><span class="n">sub_Tensor</span><span class="o">::</span><span class="n">name</span><span class="p">,</span> <span class="n">sub_Tensor</span><span class="o">::</span><span class="n">overload_name</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">      <span class="p">.</span><span class="n">typed</span><span class="o">&lt;</span><span class="n">sub_Tensor</span><span class="o">::</span><span class="n">schema</span><span class="o">&gt;</span><span class="p">();</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// aten::sub.Tensor(Tensor self, Tensor other, *, Scalar alpha=1) -&gt; Tensor
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="n">at</span><span class="o">::</span><span class="n">Tensor</span> <span class="n">sub_Tensor</span><span class="o">::</span><span class="n">call</span><span class="p">(</span><span class="k">const</span> <span class="n">at</span><span class="o">::</span><span class="n">Tensor</span> <span class="o">&amp;</span> <span class="n">self</span><span class="p">,</span> <span class="k">const</span> <span class="n">at</span><span class="o">::</span><span class="n">Tensor</span> <span class="o">&amp;</span> <span class="n">other</span><span class="p">,</span> <span class="k">const</span> <span class="n">at</span><span class="o">::</span><span class="n">Scalar</span> <span class="o">&amp;</span> <span class="n">alpha</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="k">static</span> <span class="k">auto</span> <span class="n">op</span> <span class="o">=</span> <span class="n">create_sub_Tensor_typed_handle</span><span class="p">();</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">op</span><span class="p">.</span><span class="n">call</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="n">other</span><span class="p">,</span> <span class="n">alpha</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// aten::sub.Tensor(Tensor self, Tensor other, *, Scalar alpha=1) -&gt; Tensor
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="n">at</span><span class="o">::</span><span class="n">Tensor</span> <span class="n">sub_Tensor</span><span class="o">::</span><span class="n">redispatch</span><span class="p">(</span><span class="n">c10</span><span class="o">::</span><span class="n">DispatchKeySet</span> <span class="n">dispatchKeySet</span><span class="p">,</span> <span class="k">const</span> <span class="n">at</span><span class="o">::</span><span class="n">Tensor</span> <span class="o">&amp;</span> <span class="n">self</span><span class="p">,</span> <span class="k">const</span> <span class="n">at</span><span class="o">::</span><span class="n">Tensor</span> <span class="o">&amp;</span> <span class="n">other</span><span class="p">,</span> <span class="k">const</span> <span class="n">at</span><span class="o">::</span><span class="n">Scalar</span> <span class="o">&amp;</span> <span class="n">alpha</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="k">static</span> <span class="k">auto</span> <span class="n">op</span> <span class="o">=</span> <span class="n">create_sub_Tensor_typed_handle</span><span class="p">();</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">op</span><span class="p">.</span><span class="n">redispatch</span><span class="p">(</span><span class="n">dispatchKeySet</span><span class="p">,</span> <span class="n">self</span><span class="p">,</span> <span class="n">other</span><span class="p">,</span> <span class="n">alpha</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre></div><p>dispatch 的逻辑&hellip;</p>
+<p>autograd 不是tensor的必需模块，</p>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+      <li><a href="https://luokai.tech/tags/pytorch/">PyTorch</a></li>
+    </ul>
+<nav class="paginav">
+  <a class="prev" href="https://luokai.tech/posts/pytorch_read/operators_register/">
+    <span class="title">« 上一页</span>
+    <br>
+    <span>原生算子注册</span>
+  </a>
+  <a class="next" href="https://luokai.tech/posts/paper/occlusion_face/">
+    <span class="title">下一页 »</span>
+    <br>
+    <span>论文阅读笔记：遮挡环境下的面部识别概述</span>
+  </a>
+</nav>
+
+  </footer>
+</article>
+    </main>
+    
+<footer class="footer">
+    <span>&copy; 2023 <a href="https://luokai.tech/">K&#39;s blog</a></span>
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" aria-label="go to top" title="Go to Top (Alt + G)" class="top-link" id="top-link" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentColor">
+        <path d="M12 6H0l6-6z" />
+    </svg>
+</a>
+
+<script>
+    let menu = document.getElementById('menu')
+    if (menu) {
+        menu.scrollLeft = localStorage.getItem("menu-scroll-position");
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var mybutton = document.getElementById("top-link");
+    window.onscroll = function () {
+        if (document.body.scrollTop > 800 || document.documentElement.scrollTop > 800) {
+            mybutton.style.visibility = "visible";
+            mybutton.style.opacity = "1";
+        } else {
+            mybutton.style.visibility = "hidden";
+            mybutton.style.opacity = "0";
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        if (document.body.className.includes("dark")) {
+            document.body.classList.remove('dark');
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            document.body.classList.add('dark');
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+<script>
+    document.querySelectorAll('pre > code').forEach((codeblock) => {
+        const container = codeblock.parentNode.parentNode;
+
+        const copybutton = document.createElement('button');
+        copybutton.classList.add('copy-code');
+        copybutton.innerHTML = '复制';
+
+        function copyingDone() {
+            copybutton.innerHTML = '已复制！';
+            setTimeout(() => {
+                copybutton.innerHTML = '复制';
+            }, 2000);
+        }
+
+        copybutton.addEventListener('click', (cb) => {
+            if ('clipboard' in navigator) {
+                navigator.clipboard.writeText(codeblock.textContent);
+                copyingDone();
+                return;
+            }
+
+            const range = document.createRange();
+            range.selectNodeContents(codeblock);
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+            try {
+                document.execCommand('copy');
+                copyingDone();
+            } catch (e) { };
+            selection.removeRange(range);
+        });
+
+        if (container.classList.contains("highlight")) {
+            container.appendChild(copybutton);
+        } else if (container.parentNode.firstChild == container) {
+            
+        } else if (codeblock.parentNode.parentNode.parentNode.parentNode.parentNode.nodeName == "TABLE") {
+            
+            codeblock.parentNode.parentNode.parentNode.parentNode.parentNode.appendChild(copybutton);
+        } else {
+            
+            codeblock.parentNode.appendChild(copybutton);
+        }
+    });
+</script>
+</body>
+
+</html>

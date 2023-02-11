@@ -1,123 +1,561 @@
-<!doctype html><html lang=en dir=auto><head><meta charset=utf-8><meta http-equiv=x-ua-compatible content="IE=edge"><meta name=viewport content="width=device-width,initial-scale=1,shrink-to-fit=no"><meta name=robots content="index, follow"><title>算子调用 | K's blog</title><meta name=keywords content="PyTorch"><meta name=description content="算子调用"><meta name=author content="luokai"><link rel=canonical href=https://luokai.tech/posts/pytorch_read/operators_call/><link crossorigin=anonymous href=/assets/css/stylesheet.c17a7458862fbf7bdec1657f9a28f438dab0bebc65731f3b28208648a924edda.css integrity="sha256-wXp0WIYvv3vewWV/mij0ONqwvrxlcx87KCCGSKkk7do=" rel="preload stylesheet" as=style><link rel=icon href=https://luokai.tech/favicon.ico><link rel=icon type=image/png sizes=16x16 href=https://luokai.tech/favicon-16x16.png><link rel=icon type=image/png sizes=32x32 href=https://luokai.tech/favicon-32x32.png><link rel=apple-touch-icon href=https://luokai.tech/apple-touch-icon.png><link rel=mask-icon href=https://luokai.tech/safari-pinned-tab.svg><meta name=theme-color content="#2e2e33"><meta name=msapplication-TileColor content="#2e2e33"><noscript><style>#theme-toggle,.top-link{display:none}</style><style>@media(prefers-color-scheme:dark){:root{--theme:rgb(29, 30, 32);--entry:rgb(46, 46, 51);--primary:rgb(218, 218, 219);--secondary:rgb(155, 156, 157);--tertiary:rgb(65, 66, 68);--content:rgb(196, 196, 197);--hljs-bg:rgb(46, 46, 51);--code-bg:rgb(55, 56, 62);--border:rgb(51, 51, 51)}.list{background:var(--theme)}.list:not(.dark)::-webkit-scrollbar-track{background:0 0}.list:not(.dark)::-webkit-scrollbar-thumb{border-color:var(--theme)}}</style></noscript><meta property="og:title" content="算子调用"><meta property="og:description" content="算子调用"><meta property="og:type" content="article"><meta property="og:url" content="https://luokai.tech/posts/pytorch_read/operators_call/"><meta property="og:image" content="https://luokai.tech/%3Clink%20or%20path%20of%20image%20for%20opengraph,%20twitter-cards%3E"><meta property="article:section" content="posts"><meta property="article:published_time" content="2023-02-11T00:00:00+00:00"><meta property="article:modified_time" content="2023-02-11T00:00:00+00:00"><meta property="og:site_name" content="ExampleSite"><meta name=twitter:card content="summary_large_image"><meta name=twitter:image content="https://luokai.tech/%3Clink%20or%20path%20of%20image%20for%20opengraph,%20twitter-cards%3E"><meta name=twitter:title content="算子调用"><meta name=twitter:description content="算子调用"><script type=application/ld+json>{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Posts","item":"https://luokai.tech/posts/"},{"@type":"ListItem","position":2,"name":"算子调用","item":"https://luokai.tech/posts/pytorch_read/operators_call/"}]}</script><script type=application/ld+json>{"@context":"https://schema.org","@type":"BlogPosting","headline":"算子调用","name":"算子调用","description":"算子调用","keywords":["PyTorch"],"articleBody":"算子调用过程 所有原生算子均可以在 aten/src/ATen/native/native_functions.yaml 下找到定义：\n- func: add.Tensor(Tensor self, Tensor other, *, Scalar alpha=1) -\u003e Tensor device_check: NoCheck # TensorIterator structured_delegate: add.out variants: function, method dispatch: SparseCPU, SparseCUDA: add_sparse SparseCsrCPU, SparseCsrCUDA: add_sparse_csr MkldnnCPU: mkldnn_add ZeroTensor: add_zerotensor NestedTensorCPU, NestedTensorCUDA: NestedTensor_add_Tensor tags: [canonical, pointwise] 自动脚本会生成如下代码：\naten/src/ATen/core/TensorBody.h\ninline at::Tensor Tensor::add(const at::Tensor \u0026 other, const at::Scalar \u0026 alpha) const { return at::_ops::add_Tensor::call(const_cast\u003cTensor\u0026\u003e(*this), other, alpha); } aten/src/ATen/ops/add_ops.h\nstruct TORCH_API add_Tensor { using schema = at::Tensor (const at::Tensor \u0026, const at::Tensor \u0026, const at::Scalar \u0026); using ptr_schema = schema*; // See Note [static constexpr char* members for windows NVCC] STATIC_CONSTEXPR_STR_INL_EXCEPT_WIN_CUDA(name, \"aten::add\") STATIC_CONSTEXPR_STR_INL_EXCEPT_WIN_CUDA(overload_name, \"Tensor\") STATIC_CONSTEXPR_STR_INL_EXCEPT_WIN_CUDA(schema_str, \"add.Tensor(Tensor self, Tensor other, *, Scalar alpha=1) -\u003e Tensor\") static at::Tensor call(const at::Tensor \u0026 self, const at::Tensor \u0026 other, const at::Scalar \u0026 alpha); static at::Tensor redispatch(c10::DispatchKeySet dispatchKeySet, const at::Tensor \u0026 self, const at::Tensor \u0026 other, const at::Scalar \u0026 alpha); }; aten/src/ATen/Operators_2.cpp\nSTATIC_CONST_STR_OUT_OF_LINE_FOR_WIN_CUDA(add_Tensor, name, \"aten::add\") STATIC_CONST_STR_OUT_OF_LINE_FOR_WIN_CUDA(add_Tensor, overload_name, \"Tensor\") STATIC_CONST_STR_OUT_OF_LINE_FOR_WIN_CUDA(add_Tensor, schema_str, \"add.Tensor(Tensor self, Tensor other, *, Scalar alpha=1) -\u003e Tensor\") // aten::add.Tensor(Tensor self, Tensor other, *, Scalar alpha=1) -\u003e Tensor static C10_NOINLINE c10::TypedOperatorHandle\u003cadd_Tensor::schema\u003e create_add_Tensor_typed_handle() { return c10::Dispatcher::singleton() .findSchemaOrThrow(add_Tensor::name, add_Tensor::overload_name) .typed\u003cadd_Tensor::schema\u003e(); } // aten::add.Tensor(Tensor self, Tensor other, *, Scalar alpha=1) -\u003e Tensor at::Tensor add_Tensor::call(const at::Tensor \u0026 self, const at::Tensor \u0026 other, const at::Scalar \u0026 alpha) { static auto op = create_add_Tensor_typed_handle(); return op.call(self, other, alpha); } // aten::add.Tensor(Tensor self, Tensor other, *, Scalar alpha=1) -\u003e Tensor at::Tensor add_Tensor::redispatch(c10::DispatchKeySet dispatchKeySet, const at::Tensor \u0026 self, const at::Tensor \u0026 other, const at::Scalar \u0026 alpha) { static auto op = create_add_Tensor_typed_handle(); return op.redispatch(dispatchKeySet, self, other, alpha); } 通过 Dispatcher 调用对应算子\n// aten::add.out(Tensor self, Tensor other, *, Scalar alpha=1, Tensor(a!) out) -\u003e Tensor(a!) static C10_NOINLINE c10::TypedOperatorHandle\u003cadd_out::schema\u003e create_add_out_typed_handle() { return c10::Dispatcher::singleton() .findSchemaOrThrow(add_out::name, add_out::overload_name) .typed\u003cadd_out::schema\u003e(); } // aten::add.out(Tensor self, Tensor other, *, Scalar alpha=1, Tensor(a!) out) -\u003e Tensor(a!) at::Tensor \u0026 add_out::call(const at::Tensor \u0026 self, const at::Tensor \u0026 other, const at::Scalar \u0026 alpha, at::Tensor \u0026 out) { static auto op = create_add_out_typed_handle(); return op.call(self, other, alpha, out); } // aten::add.out(Tensor self, Tensor other, *, Scalar alpha=1, Tensor(a!) out) -\u003e Tensor(a!) at::Tensor \u0026 add_out::redispatch(c10::DispatchKeySet dispatchKeySet, const at::Tensor \u0026 self, const at::Tensor \u0026 other, const at::Scalar \u0026 alpha, at::Tensor \u0026 out) { static auto op = create_add_out_typed_handle(); return op.redispatch(dispatchKeySet, self, other, alpha, out); } 可以看到，最后的call函数来到了c10::Dispatcher类:\nC10_EXPORT Dispatcher\u0026 Dispatcher::realSingleton() { static Dispatcher _singleton; return _singleton; } c10::optional\u003cOperatorHandle\u003e Dispatcher::findOp(const OperatorName\u0026 overload_name) { return operatorLookupTable_.read([\u0026] (const ska::flat_hash_map\u003cOperatorName, OperatorHandle\u003e\u0026 operatorLookupTable) -\u003e c10::optional\u003cOperatorHandle\u003e { auto found = operatorLookupTable.find(overload_name); if (found == operatorLookupTable.end()) { return c10::nullopt; } return found-\u003esecond; }); } c10::optional\u003cOperatorHandle\u003e Dispatcher::findSchema(const OperatorName\u0026 overload_name) { auto it = findOp(overload_name); if (it.has_value()) { if (it-\u003ehasSchema()) { return it; } else { return c10::nullopt; } } else { return it; } } OperatorHandle Dispatcher::findSchemaOrThrow(const char* name, const char* overload_name) { auto it = findSchema({name, overload_name}); if (!it.has_value()) { // Check if we have ANYTHING; if that's the case, that means you're // missing schema auto it2 = findOp({name, overload_name}); if (!it2.has_value()) { TORCH_CHECK(false, \"Could not find schema for \", name, \".\", overload_name); } else { TORCH_CHECK(false, \"Could not find schema for \", name, \".\", overload_name, \" but we found an implementation; did you forget to def() the operator?\"); } } return it.value(); } 最后的 typed 函数返回的是一个 TypedOperatorHandle 类，它的 call 函数依旧是通过单例模式调用了静态成员的 call 函数\ntemplate\u003cclass Return, class... Args\u003e class TypedOperatorHandle\u003cReturn (Args...)\u003e final : public OperatorHandle { public: // ... C10_ALWAYS_INLINE Return call(Args... args) const { return c10::Dispatcher::singleton().call\u003cReturn, Args...\u003e(*this, std::forward\u003cArgs\u003e(args)...); } // ... }; ","wordCount":"548","inLanguage":"en","datePublished":"2023-02-11T00:00:00Z","dateModified":"2023-02-11T00:00:00Z","author":{"@type":"Person","name":"luokai"},"mainEntityOfPage":{"@type":"WebPage","@id":"https://luokai.tech/posts/pytorch_read/operators_call/"},"publisher":{"@type":"Organization","name":"K's blog","logo":{"@type":"ImageObject","url":"https://luokai.tech/favicon.ico"}}}</script></head><body id=top><script>localStorage.getItem("pref-theme")==="dark"?document.body.classList.add("dark"):localStorage.getItem("pref-theme")==="light"?document.body.classList.remove("dark"):window.matchMedia("(prefers-color-scheme: dark)").matches&&document.body.classList.add("dark")</script><header class=header><nav class=nav><div class=logo><a href=https://luokai.tech/ accesskey=h title="K's blog (Alt + H)"><img src=https://luokai.tech/apple-touch-icon.png alt aria-label=logo height=35>K's blog</a><div class=logo-switches><button id=theme-toggle accesskey=t title="(Alt + T)"><svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg><svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg></button></div></div><ul id=menu><li><a href=https://luokai.tech/categories title=分类><span>分类</span></a></li><li><a href=https://luokai.tech/tags title=tags><span>tags</span></a></li><li><a href=https://luokai.tech/search title=搜索><span>搜索</span></a></li><li><a href=https://luokai.tech/archives title=归档><span>归档</span></a></li></ul></nav></header><main class=main><article class=post-single><header class=post-header><div class=breadcrumbs><a href=https://luokai.tech/>Home</a>&nbsp;»&nbsp;<a href=https://luokai.tech/posts/>Posts</a></div><h1 class=post-title>算子调用<sup><span class=entry-isdraft>&nbsp;&nbsp;[draft]</span></sup></h1><div class=post-description>算子调用</div><div class=post-meta><span title='2023-02-11 00:00:00 +0000 UTC'>2023-11-11</span>&nbsp;·&nbsp;548 words&nbsp;·&nbsp;luokai</div></header><div class=toc><details><summary accesskey=c title="(Alt + C)"><span class=details>Table of Contents</span></summary><div class=inner><nav id=TableOfContents><ul><li><a href=#算子调用过程>算子调用过程</a></li></ul></nav></div></details></div><div class=post-content><h2 id=算子调用过程>算子调用过程<a hidden class=anchor aria-hidden=true href=#算子调用过程>#</a></h2><p>所有原生算子均可以在 aten/src/ATen/native/native_functions.yaml 下找到定义：</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-xml data-lang=xml><span class=line><span class=cl>- func: add.Tensor(Tensor self, Tensor other, *, Scalar alpha=1) -&gt; Tensor
-</span></span><span class=line><span class=cl>  device_check: NoCheck   # TensorIterator
-</span></span><span class=line><span class=cl>  structured_delegate: add.out
-</span></span><span class=line><span class=cl>  variants: function, method
-</span></span><span class=line><span class=cl>  dispatch:
-</span></span><span class=line><span class=cl>    SparseCPU, SparseCUDA: add_sparse
-</span></span><span class=line><span class=cl>    SparseCsrCPU, SparseCsrCUDA: add_sparse_csr
-</span></span><span class=line><span class=cl>    MkldnnCPU: mkldnn_add
-</span></span><span class=line><span class=cl>    ZeroTensor: add_zerotensor
-</span></span><span class=line><span class=cl>    NestedTensorCPU, NestedTensorCUDA: NestedTensor_add_Tensor
-</span></span><span class=line><span class=cl>  tags: [canonical, pointwise]
-</span></span></code></pre></div><p>自动脚本会生成如下代码：<br>aten/src/ATen/core/TensorBody.h</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=kr>inline</span> <span class=n>at</span><span class=o>::</span><span class=n>Tensor</span> <span class=n>Tensor</span><span class=o>::</span><span class=n>add</span><span class=p>(</span><span class=k>const</span> <span class=n>at</span><span class=o>::</span><span class=n>Tensor</span> <span class=o>&amp;</span> <span class=n>other</span><span class=p>,</span> <span class=k>const</span> <span class=n>at</span><span class=o>::</span><span class=n>Scalar</span> <span class=o>&amp;</span> <span class=n>alpha</span><span class=p>)</span> <span class=k>const</span> <span class=p>{</span>
-</span></span><span class=line><span class=cl>    <span class=k>return</span> <span class=n>at</span><span class=o>::</span><span class=n>_ops</span><span class=o>::</span><span class=n>add_Tensor</span><span class=o>::</span><span class=n>call</span><span class=p>(</span><span class=k>const_cast</span><span class=o>&lt;</span><span class=n>Tensor</span><span class=o>&amp;&gt;</span><span class=p>(</span><span class=o>*</span><span class=k>this</span><span class=p>),</span> <span class=n>other</span><span class=p>,</span> <span class=n>alpha</span><span class=p>);</span>
-</span></span><span class=line><span class=cl><span class=p>}</span>
-</span></span></code></pre></div><p>aten/src/ATen/ops/add_ops.h</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=k>struct</span> <span class=nc>TORCH_API</span> <span class=n>add_Tensor</span> <span class=p>{</span>
-</span></span><span class=line><span class=cl>  <span class=k>using</span> <span class=n>schema</span> <span class=o>=</span> <span class=n>at</span><span class=o>::</span><span class=n>Tensor</span> <span class=p>(</span><span class=k>const</span> <span class=n>at</span><span class=o>::</span><span class=n>Tensor</span> <span class=o>&amp;</span><span class=p>,</span> <span class=k>const</span> <span class=n>at</span><span class=o>::</span><span class=n>Tensor</span> <span class=o>&amp;</span><span class=p>,</span> <span class=k>const</span> <span class=n>at</span><span class=o>::</span><span class=n>Scalar</span> <span class=o>&amp;</span><span class=p>);</span>
-</span></span><span class=line><span class=cl>  <span class=k>using</span> <span class=n>ptr_schema</span> <span class=o>=</span> <span class=n>schema</span><span class=o>*</span><span class=p>;</span>
-</span></span><span class=line><span class=cl>  <span class=c1>// See Note [static constexpr char* members for windows NVCC]
-</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=n>STATIC_CONSTEXPR_STR_INL_EXCEPT_WIN_CUDA</span><span class=p>(</span><span class=n>name</span><span class=p>,</span> <span class=s>&#34;aten::add&#34;</span><span class=p>)</span>
-</span></span><span class=line><span class=cl>  <span class=n>STATIC_CONSTEXPR_STR_INL_EXCEPT_WIN_CUDA</span><span class=p>(</span><span class=n>overload_name</span><span class=p>,</span> <span class=s>&#34;Tensor&#34;</span><span class=p>)</span>
-</span></span><span class=line><span class=cl>  <span class=n>STATIC_CONSTEXPR_STR_INL_EXCEPT_WIN_CUDA</span><span class=p>(</span><span class=n>schema_str</span><span class=p>,</span> <span class=s>&#34;add.Tensor(Tensor self, Tensor other, *, Scalar alpha=1) -&gt; Tensor&#34;</span><span class=p>)</span>
-</span></span><span class=line><span class=cl>  <span class=k>static</span> <span class=n>at</span><span class=o>::</span><span class=n>Tensor</span> <span class=n>call</span><span class=p>(</span><span class=k>const</span> <span class=n>at</span><span class=o>::</span><span class=n>Tensor</span> <span class=o>&amp;</span> <span class=n>self</span><span class=p>,</span> <span class=k>const</span> <span class=n>at</span><span class=o>::</span><span class=n>Tensor</span> <span class=o>&amp;</span> <span class=n>other</span><span class=p>,</span> <span class=k>const</span> <span class=n>at</span><span class=o>::</span><span class=n>Scalar</span> <span class=o>&amp;</span> <span class=n>alpha</span><span class=p>);</span>
-</span></span><span class=line><span class=cl>  <span class=k>static</span> <span class=n>at</span><span class=o>::</span><span class=n>Tensor</span> <span class=n>redispatch</span><span class=p>(</span><span class=n>c10</span><span class=o>::</span><span class=n>DispatchKeySet</span> <span class=n>dispatchKeySet</span><span class=p>,</span> <span class=k>const</span> <span class=n>at</span><span class=o>::</span><span class=n>Tensor</span> <span class=o>&amp;</span> <span class=n>self</span><span class=p>,</span> <span class=k>const</span> <span class=n>at</span><span class=o>::</span><span class=n>Tensor</span> <span class=o>&amp;</span> <span class=n>other</span><span class=p>,</span> <span class=k>const</span> <span class=n>at</span><span class=o>::</span><span class=n>Scalar</span> <span class=o>&amp;</span> <span class=n>alpha</span><span class=p>);</span>
-</span></span><span class=line><span class=cl><span class=p>};</span>
-</span></span></code></pre></div><p>aten/src/ATen/Operators_2.cpp</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=n>STATIC_CONST_STR_OUT_OF_LINE_FOR_WIN_CUDA</span><span class=p>(</span><span class=n>add_Tensor</span><span class=p>,</span> <span class=n>name</span><span class=p>,</span> <span class=s>&#34;aten::add&#34;</span><span class=p>)</span>
-</span></span><span class=line><span class=cl><span class=n>STATIC_CONST_STR_OUT_OF_LINE_FOR_WIN_CUDA</span><span class=p>(</span><span class=n>add_Tensor</span><span class=p>,</span> <span class=n>overload_name</span><span class=p>,</span> <span class=s>&#34;Tensor&#34;</span><span class=p>)</span>
-</span></span><span class=line><span class=cl><span class=n>STATIC_CONST_STR_OUT_OF_LINE_FOR_WIN_CUDA</span><span class=p>(</span><span class=n>add_Tensor</span><span class=p>,</span> <span class=n>schema_str</span><span class=p>,</span> <span class=s>&#34;add.Tensor(Tensor self, Tensor other, *, Scalar alpha=1) -&gt; Tensor&#34;</span><span class=p>)</span>
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl><span class=c1>// aten::add.Tensor(Tensor self, Tensor other, *, Scalar alpha=1) -&gt; Tensor
-</span></span></span><span class=line><span class=cl><span class=c1></span><span class=k>static</span> <span class=n>C10_NOINLINE</span> <span class=n>c10</span><span class=o>::</span><span class=n>TypedOperatorHandle</span><span class=o>&lt;</span><span class=n>add_Tensor</span><span class=o>::</span><span class=n>schema</span><span class=o>&gt;</span> <span class=n>create_add_Tensor_typed_handle</span><span class=p>()</span> <span class=p>{</span>
-</span></span><span class=line><span class=cl>  <span class=k>return</span> <span class=n>c10</span><span class=o>::</span><span class=n>Dispatcher</span><span class=o>::</span><span class=n>singleton</span><span class=p>()</span>
-</span></span><span class=line><span class=cl>      <span class=p>.</span><span class=n>findSchemaOrThrow</span><span class=p>(</span><span class=n>add_Tensor</span><span class=o>::</span><span class=n>name</span><span class=p>,</span> <span class=n>add_Tensor</span><span class=o>::</span><span class=n>overload_name</span><span class=p>)</span>
-</span></span><span class=line><span class=cl>      <span class=p>.</span><span class=n>typed</span><span class=o>&lt;</span><span class=n>add_Tensor</span><span class=o>::</span><span class=n>schema</span><span class=o>&gt;</span><span class=p>();</span>
-</span></span><span class=line><span class=cl><span class=p>}</span>
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl><span class=c1>// aten::add.Tensor(Tensor self, Tensor other, *, Scalar alpha=1) -&gt; Tensor
-</span></span></span><span class=line><span class=cl><span class=c1></span><span class=n>at</span><span class=o>::</span><span class=n>Tensor</span> <span class=n>add_Tensor</span><span class=o>::</span><span class=n>call</span><span class=p>(</span><span class=k>const</span> <span class=n>at</span><span class=o>::</span><span class=n>Tensor</span> <span class=o>&amp;</span> <span class=n>self</span><span class=p>,</span> <span class=k>const</span> <span class=n>at</span><span class=o>::</span><span class=n>Tensor</span> <span class=o>&amp;</span> <span class=n>other</span><span class=p>,</span> <span class=k>const</span> <span class=n>at</span><span class=o>::</span><span class=n>Scalar</span> <span class=o>&amp;</span> <span class=n>alpha</span><span class=p>)</span> <span class=p>{</span>
-</span></span><span class=line><span class=cl>    
-</span></span><span class=line><span class=cl>    <span class=k>static</span> <span class=k>auto</span> <span class=n>op</span> <span class=o>=</span> <span class=n>create_add_Tensor_typed_handle</span><span class=p>();</span>
-</span></span><span class=line><span class=cl>    <span class=k>return</span> <span class=n>op</span><span class=p>.</span><span class=n>call</span><span class=p>(</span><span class=n>self</span><span class=p>,</span> <span class=n>other</span><span class=p>,</span> <span class=n>alpha</span><span class=p>);</span>
-</span></span><span class=line><span class=cl><span class=p>}</span>
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl><span class=c1>// aten::add.Tensor(Tensor self, Tensor other, *, Scalar alpha=1) -&gt; Tensor
-</span></span></span><span class=line><span class=cl><span class=c1></span><span class=n>at</span><span class=o>::</span><span class=n>Tensor</span> <span class=n>add_Tensor</span><span class=o>::</span><span class=n>redispatch</span><span class=p>(</span><span class=n>c10</span><span class=o>::</span><span class=n>DispatchKeySet</span> <span class=n>dispatchKeySet</span><span class=p>,</span> <span class=k>const</span> <span class=n>at</span><span class=o>::</span><span class=n>Tensor</span> <span class=o>&amp;</span> <span class=n>self</span><span class=p>,</span> <span class=k>const</span> <span class=n>at</span><span class=o>::</span><span class=n>Tensor</span> <span class=o>&amp;</span> <span class=n>other</span><span class=p>,</span> <span class=k>const</span> <span class=n>at</span><span class=o>::</span><span class=n>Scalar</span> <span class=o>&amp;</span> <span class=n>alpha</span><span class=p>)</span> <span class=p>{</span>
-</span></span><span class=line><span class=cl>    
-</span></span><span class=line><span class=cl>    <span class=k>static</span> <span class=k>auto</span> <span class=n>op</span> <span class=o>=</span> <span class=n>create_add_Tensor_typed_handle</span><span class=p>();</span>
-</span></span><span class=line><span class=cl>    <span class=k>return</span> <span class=n>op</span><span class=p>.</span><span class=n>redispatch</span><span class=p>(</span><span class=n>dispatchKeySet</span><span class=p>,</span> <span class=n>self</span><span class=p>,</span> <span class=n>other</span><span class=p>,</span> <span class=n>alpha</span><span class=p>);</span>
-</span></span><span class=line><span class=cl><span class=p>}</span>
-</span></span></code></pre></div><p>通过 <a href=dispatcher>Dispatcher</a> 调用对应算子</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=c1>// aten::add.out(Tensor self, Tensor other, *, Scalar alpha=1, Tensor(a!) out) -&gt; Tensor(a!)
-</span></span></span><span class=line><span class=cl><span class=c1></span><span class=k>static</span> <span class=n>C10_NOINLINE</span> <span class=n>c10</span><span class=o>::</span><span class=n>TypedOperatorHandle</span><span class=o>&lt;</span><span class=n>add_out</span><span class=o>::</span><span class=n>schema</span><span class=o>&gt;</span> <span class=n>create_add_out_typed_handle</span><span class=p>()</span> <span class=p>{</span>
-</span></span><span class=line><span class=cl>  <span class=k>return</span> <span class=n>c10</span><span class=o>::</span><span class=n>Dispatcher</span><span class=o>::</span><span class=n>singleton</span><span class=p>()</span>
-</span></span><span class=line><span class=cl>      <span class=p>.</span><span class=n>findSchemaOrThrow</span><span class=p>(</span><span class=n>add_out</span><span class=o>::</span><span class=n>name</span><span class=p>,</span> <span class=n>add_out</span><span class=o>::</span><span class=n>overload_name</span><span class=p>)</span>
-</span></span><span class=line><span class=cl>      <span class=p>.</span><span class=n>typed</span><span class=o>&lt;</span><span class=n>add_out</span><span class=o>::</span><span class=n>schema</span><span class=o>&gt;</span><span class=p>();</span>
-</span></span><span class=line><span class=cl><span class=p>}</span>
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl><span class=c1>// aten::add.out(Tensor self, Tensor other, *, Scalar alpha=1, Tensor(a!) out) -&gt; Tensor(a!)
-</span></span></span><span class=line><span class=cl><span class=c1></span><span class=n>at</span><span class=o>::</span><span class=n>Tensor</span> <span class=o>&amp;</span> <span class=n>add_out</span><span class=o>::</span><span class=n>call</span><span class=p>(</span><span class=k>const</span> <span class=n>at</span><span class=o>::</span><span class=n>Tensor</span> <span class=o>&amp;</span> <span class=n>self</span><span class=p>,</span> <span class=k>const</span> <span class=n>at</span><span class=o>::</span><span class=n>Tensor</span> <span class=o>&amp;</span> <span class=n>other</span><span class=p>,</span> <span class=k>const</span> <span class=n>at</span><span class=o>::</span><span class=n>Scalar</span> <span class=o>&amp;</span> <span class=n>alpha</span><span class=p>,</span> <span class=n>at</span><span class=o>::</span><span class=n>Tensor</span> <span class=o>&amp;</span> <span class=n>out</span><span class=p>)</span> <span class=p>{</span>
-</span></span><span class=line><span class=cl>    <span class=k>static</span> <span class=k>auto</span> <span class=n>op</span> <span class=o>=</span> <span class=n>create_add_out_typed_handle</span><span class=p>();</span>
-</span></span><span class=line><span class=cl>    <span class=k>return</span> <span class=n>op</span><span class=p>.</span><span class=n>call</span><span class=p>(</span><span class=n>self</span><span class=p>,</span> <span class=n>other</span><span class=p>,</span> <span class=n>alpha</span><span class=p>,</span> <span class=n>out</span><span class=p>);</span>
-</span></span><span class=line><span class=cl><span class=p>}</span>
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl><span class=c1>// aten::add.out(Tensor self, Tensor other, *, Scalar alpha=1, Tensor(a!) out) -&gt; Tensor(a!)
-</span></span></span><span class=line><span class=cl><span class=c1></span><span class=n>at</span><span class=o>::</span><span class=n>Tensor</span> <span class=o>&amp;</span> <span class=n>add_out</span><span class=o>::</span><span class=n>redispatch</span><span class=p>(</span><span class=n>c10</span><span class=o>::</span><span class=n>DispatchKeySet</span> <span class=n>dispatchKeySet</span><span class=p>,</span> <span class=k>const</span> <span class=n>at</span><span class=o>::</span><span class=n>Tensor</span> <span class=o>&amp;</span> <span class=n>self</span><span class=p>,</span> <span class=k>const</span> <span class=n>at</span><span class=o>::</span><span class=n>Tensor</span> <span class=o>&amp;</span> <span class=n>other</span><span class=p>,</span> <span class=k>const</span> <span class=n>at</span><span class=o>::</span><span class=n>Scalar</span> <span class=o>&amp;</span> <span class=n>alpha</span><span class=p>,</span> <span class=n>at</span><span class=o>::</span><span class=n>Tensor</span> <span class=o>&amp;</span> <span class=n>out</span><span class=p>)</span> <span class=p>{</span>
-</span></span><span class=line><span class=cl>    <span class=k>static</span> <span class=k>auto</span> <span class=n>op</span> <span class=o>=</span> <span class=n>create_add_out_typed_handle</span><span class=p>();</span>
-</span></span><span class=line><span class=cl>    <span class=k>return</span> <span class=n>op</span><span class=p>.</span><span class=n>redispatch</span><span class=p>(</span><span class=n>dispatchKeySet</span><span class=p>,</span> <span class=n>self</span><span class=p>,</span> <span class=n>other</span><span class=p>,</span> <span class=n>alpha</span><span class=p>,</span> <span class=n>out</span><span class=p>);</span>
-</span></span><span class=line><span class=cl><span class=p>}</span>
-</span></span></code></pre></div><p>可以看到，最后的call函数来到了c10::Dispatcher类:</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=n>C10_EXPORT</span> <span class=n>Dispatcher</span><span class=o>&amp;</span> <span class=n>Dispatcher</span><span class=o>::</span><span class=n>realSingleton</span><span class=p>()</span> <span class=p>{</span>
-</span></span><span class=line><span class=cl>  <span class=k>static</span> <span class=n>Dispatcher</span> <span class=n>_singleton</span><span class=p>;</span>
-</span></span><span class=line><span class=cl>  <span class=k>return</span> <span class=n>_singleton</span><span class=p>;</span>
-</span></span><span class=line><span class=cl><span class=p>}</span>
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl><span class=n>c10</span><span class=o>::</span><span class=n>optional</span><span class=o>&lt;</span><span class=n>OperatorHandle</span><span class=o>&gt;</span> <span class=n>Dispatcher</span><span class=o>::</span><span class=n>findOp</span><span class=p>(</span><span class=k>const</span> <span class=n>OperatorName</span><span class=o>&amp;</span> <span class=n>overload_name</span><span class=p>)</span> <span class=p>{</span>
-</span></span><span class=line><span class=cl>  <span class=k>return</span> <span class=n>operatorLookupTable_</span><span class=p>.</span><span class=n>read</span><span class=p>([</span><span class=o>&amp;</span><span class=p>]</span> <span class=p>(</span><span class=k>const</span> <span class=n>ska</span><span class=o>::</span><span class=n>flat_hash_map</span><span class=o>&lt;</span><span class=n>OperatorName</span><span class=p>,</span> <span class=n>OperatorHandle</span><span class=o>&gt;&amp;</span> <span class=n>operatorLookupTable</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=n>c10</span><span class=o>::</span><span class=n>optional</span><span class=o>&lt;</span><span class=n>OperatorHandle</span><span class=o>&gt;</span> <span class=p>{</span>
-</span></span><span class=line><span class=cl>    <span class=k>auto</span> <span class=n>found</span> <span class=o>=</span> <span class=n>operatorLookupTable</span><span class=p>.</span><span class=n>find</span><span class=p>(</span><span class=n>overload_name</span><span class=p>);</span>
-</span></span><span class=line><span class=cl>    <span class=k>if</span> <span class=p>(</span><span class=n>found</span> <span class=o>==</span> <span class=n>operatorLookupTable</span><span class=p>.</span><span class=n>end</span><span class=p>())</span> <span class=p>{</span>
-</span></span><span class=line><span class=cl>      <span class=k>return</span> <span class=n>c10</span><span class=o>::</span><span class=n>nullopt</span><span class=p>;</span>
-</span></span><span class=line><span class=cl>    <span class=p>}</span>
-</span></span><span class=line><span class=cl>    <span class=k>return</span> <span class=n>found</span><span class=o>-&gt;</span><span class=n>second</span><span class=p>;</span>
-</span></span><span class=line><span class=cl>  <span class=p>});</span>
-</span></span><span class=line><span class=cl><span class=p>}</span>
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl><span class=n>c10</span><span class=o>::</span><span class=n>optional</span><span class=o>&lt;</span><span class=n>OperatorHandle</span><span class=o>&gt;</span> <span class=n>Dispatcher</span><span class=o>::</span><span class=n>findSchema</span><span class=p>(</span><span class=k>const</span> <span class=n>OperatorName</span><span class=o>&amp;</span> <span class=n>overload_name</span><span class=p>)</span> <span class=p>{</span>
-</span></span><span class=line><span class=cl>  <span class=k>auto</span> <span class=n>it</span> <span class=o>=</span> <span class=n>findOp</span><span class=p>(</span><span class=n>overload_name</span><span class=p>);</span>
-</span></span><span class=line><span class=cl>  <span class=k>if</span> <span class=p>(</span><span class=n>it</span><span class=p>.</span><span class=n>has_value</span><span class=p>())</span> <span class=p>{</span>
-</span></span><span class=line><span class=cl>    <span class=k>if</span> <span class=p>(</span><span class=n>it</span><span class=o>-&gt;</span><span class=n>hasSchema</span><span class=p>())</span> <span class=p>{</span>
-</span></span><span class=line><span class=cl>      <span class=k>return</span> <span class=n>it</span><span class=p>;</span>
-</span></span><span class=line><span class=cl>    <span class=p>}</span> <span class=k>else</span> <span class=p>{</span>
-</span></span><span class=line><span class=cl>      <span class=k>return</span> <span class=n>c10</span><span class=o>::</span><span class=n>nullopt</span><span class=p>;</span>
-</span></span><span class=line><span class=cl>    <span class=p>}</span>
-</span></span><span class=line><span class=cl>  <span class=p>}</span> <span class=k>else</span> <span class=p>{</span>
-</span></span><span class=line><span class=cl>    <span class=k>return</span> <span class=n>it</span><span class=p>;</span>
-</span></span><span class=line><span class=cl>  <span class=p>}</span>
-</span></span><span class=line><span class=cl><span class=p>}</span>
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl><span class=n>OperatorHandle</span> <span class=n>Dispatcher</span><span class=o>::</span><span class=n>findSchemaOrThrow</span><span class=p>(</span><span class=k>const</span> <span class=kt>char</span><span class=o>*</span> <span class=n>name</span><span class=p>,</span> <span class=k>const</span> <span class=kt>char</span><span class=o>*</span> <span class=n>overload_name</span><span class=p>)</span> <span class=p>{</span>
-</span></span><span class=line><span class=cl>  <span class=k>auto</span> <span class=n>it</span> <span class=o>=</span> <span class=n>findSchema</span><span class=p>({</span><span class=n>name</span><span class=p>,</span> <span class=n>overload_name</span><span class=p>});</span>
-</span></span><span class=line><span class=cl>  <span class=k>if</span> <span class=p>(</span><span class=o>!</span><span class=n>it</span><span class=p>.</span><span class=n>has_value</span><span class=p>())</span> <span class=p>{</span>
-</span></span><span class=line><span class=cl>    <span class=c1>// Check if we have ANYTHING; if that&#39;s the case, that means you&#39;re
-</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=c1>// missing schema
-</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=k>auto</span> <span class=n>it2</span> <span class=o>=</span> <span class=n>findOp</span><span class=p>({</span><span class=n>name</span><span class=p>,</span> <span class=n>overload_name</span><span class=p>});</span>
-</span></span><span class=line><span class=cl>    <span class=k>if</span> <span class=p>(</span><span class=o>!</span><span class=n>it2</span><span class=p>.</span><span class=n>has_value</span><span class=p>())</span> <span class=p>{</span>
-</span></span><span class=line><span class=cl>      <span class=n>TORCH_CHECK</span><span class=p>(</span><span class=nb>false</span><span class=p>,</span> <span class=s>&#34;Could not find schema for &#34;</span><span class=p>,</span> <span class=n>name</span><span class=p>,</span> <span class=s>&#34;.&#34;</span><span class=p>,</span> <span class=n>overload_name</span><span class=p>);</span>
-</span></span><span class=line><span class=cl>    <span class=p>}</span> <span class=k>else</span> <span class=p>{</span>
-</span></span><span class=line><span class=cl>      <span class=n>TORCH_CHECK</span><span class=p>(</span><span class=nb>false</span><span class=p>,</span> <span class=s>&#34;Could not find schema for &#34;</span><span class=p>,</span> <span class=n>name</span><span class=p>,</span> <span class=s>&#34;.&#34;</span><span class=p>,</span> <span class=n>overload_name</span><span class=p>,</span>
-</span></span><span class=line><span class=cl>        <span class=s>&#34; but we found an implementation; did you forget to def() the operator?&#34;</span><span class=p>);</span>
-</span></span><span class=line><span class=cl>    <span class=p>}</span>
-</span></span><span class=line><span class=cl>  <span class=p>}</span>
-</span></span><span class=line><span class=cl>  <span class=k>return</span> <span class=n>it</span><span class=p>.</span><span class=n>value</span><span class=p>();</span>
-</span></span><span class=line><span class=cl><span class=p>}</span>
-</span></span></code></pre></div><p>最后的 typed 函数返回的是一个 TypedOperatorHandle 类，它的 call 函数依旧是通过单例模式调用了静态成员的 call 函数</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=k>template</span><span class=o>&lt;</span><span class=k>class</span> <span class=nc>Return</span><span class=p>,</span> <span class=k>class</span><span class=err>... </span><span class=nc>Args</span><span class=o>&gt;</span>
-</span></span><span class=line><span class=cl><span class=k>class</span> <span class=nc>TypedOperatorHandle</span><span class=o>&lt;</span><span class=n>Return</span> <span class=p>(</span><span class=n>Args</span><span class=p>...)</span><span class=o>&gt;</span> <span class=k>final</span> <span class=o>:</span> <span class=k>public</span> <span class=n>OperatorHandle</span> <span class=p>{</span>
-</span></span><span class=line><span class=cl><span class=k>public</span><span class=o>:</span>
-</span></span><span class=line><span class=cl>  <span class=c1>// ...
-</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=n>C10_ALWAYS_INLINE</span> <span class=n>Return</span> <span class=n>call</span><span class=p>(</span><span class=n>Args</span><span class=p>...</span> <span class=n>args</span><span class=p>)</span> <span class=k>const</span> <span class=p>{</span>
-</span></span><span class=line><span class=cl>    <span class=k>return</span> <span class=n>c10</span><span class=o>::</span><span class=n>Dispatcher</span><span class=o>::</span><span class=n>singleton</span><span class=p>().</span><span class=n>call</span><span class=o>&lt;</span><span class=n>Return</span><span class=p>,</span> <span class=n>Args</span><span class=p>...</span><span class=o>&gt;</span><span class=p>(</span><span class=o>*</span><span class=k>this</span><span class=p>,</span> <span class=n>std</span><span class=o>::</span><span class=n>forward</span><span class=o>&lt;</span><span class=n>Args</span><span class=o>&gt;</span><span class=p>(</span><span class=n>args</span><span class=p>)...);</span>
-</span></span><span class=line><span class=cl>  <span class=p>}</span>
-</span></span><span class=line><span class=cl>  <span class=c1>// ...
-</span></span></span><span class=line><span class=cl><span class=c1></span><span class=p>};</span>
-</span></span></code></pre></div></div><footer class=post-footer><ul class=post-tags><li><a href=https://luokai.tech/tags/pytorch/>PyTorch</a></li></ul><nav class=paginav><a class=prev href=https://luokai.tech/posts/pytorch_read/operators_register/><span class=title>« Prev</span><br><span>原生算子注册</span></a>
-<a class=next href=https://luokai.tech/posts/pytorch_read/autograd/><span class=title>Next »</span><br><span>自动微分张量库</span></a></nav></footer></article></main><footer class=footer><span>&copy; 2023 <a href=https://luokai.tech/>K's blog</a></span>
-<span>Powered by
-<a href=https://gohugo.io/ rel="noopener noreferrer" target=_blank>Hugo</a> &
-        <a href=https://github.com/adityatelange/hugo-PaperMod/ rel=noopener target=_blank>PaperMod</a></span></footer><a href=#top aria-label="go to top" title="Go to Top (Alt + G)" class=top-link id=top-link accesskey=g><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentcolor"><path d="M12 6H0l6-6z"/></svg></a><script>let menu=document.getElementById("menu");menu&&(menu.scrollLeft=localStorage.getItem("menu-scroll-position"),menu.onscroll=function(){localStorage.setItem("menu-scroll-position",menu.scrollLeft)}),document.querySelectorAll('a[href^="#"]').forEach(e=>{e.addEventListener("click",function(e){e.preventDefault();var t=this.getAttribute("href").substr(1);window.matchMedia("(prefers-reduced-motion: reduce)").matches?document.querySelector(`[id='${decodeURIComponent(t)}']`).scrollIntoView():document.querySelector(`[id='${decodeURIComponent(t)}']`).scrollIntoView({behavior:"smooth"}),t==="top"?history.replaceState(null,null," "):history.pushState(null,null,`#${t}`)})})</script><script>var mybutton=document.getElementById("top-link");window.onscroll=function(){document.body.scrollTop>800||document.documentElement.scrollTop>800?(mybutton.style.visibility="visible",mybutton.style.opacity="1"):(mybutton.style.visibility="hidden",mybutton.style.opacity="0")}</script><script>document.getElementById("theme-toggle").addEventListener("click",()=>{document.body.className.includes("dark")?(document.body.classList.remove("dark"),localStorage.setItem("pref-theme","light")):(document.body.classList.add("dark"),localStorage.setItem("pref-theme","dark"))})</script></body></html>
+<!DOCTYPE html>
+<html lang="zh" dir="auto">
+
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>算子调用 | K&#39;s blog</title>
+<meta name="keywords" content="PyTorch">
+<meta name="description" content="算子调用">
+<meta name="author" content="luokai">
+<link rel="canonical" href="https://luokai.tech/posts/pytorch_read/operators_call/">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.1198b75e51d35b5b7d65621cd91bb8972beea3ec5e25ffa5777e6c311a24d49d.css" integrity="sha256-EZi3XlHTW1t9ZWIc2Ru4lyvuo&#43;xeJf&#43;ld35sMRok1J0=" rel="preload stylesheet" as="style">
+<script defer crossorigin="anonymous" src="/assets/js/highlight.f413e19d0714851f6474e7ee9632408e58ac146fbdbe62747134bea2fa3415e0.js" integrity="sha256-9BPhnQcUhR9kdOfuljJAjlisFG&#43;9vmJ0cTS&#43;ovo0FeA="
+    onload="hljs.initHighlightingOnLoad();"></script>
+<link rel="icon" href="https://luokai.tech/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://luokai.tech/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://luokai.tech/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://luokai.tech/apple-touch-icon.png">
+<link rel="mask-icon" href="https://luokai.tech/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --hljs-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-track {
+                background: 0 0;
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-thumb {
+                border-color: var(--theme);
+            }
+        }
+
+    </style>
+</noscript>
+<script type="application/javascript">
+var doNotTrack = false;
+if (!doNotTrack) {
+	(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	})(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+	ga('create', 'UA-67470195-2', 'auto');
+	
+	ga('send', 'pageview');
+}
+</script><meta property="og:title" content="算子调用" />
+<meta property="og:description" content="算子调用" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://luokai.tech/posts/pytorch_read/operators_call/" /><meta property="og:image" content="https://luokai.tech/%3Clink%20or%20path%20of%20image%20for%20opengraph,%20twitter-cards%3E"/><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-02-11T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-02-11T00:00:00+00:00" /><meta property="og:site_name" content="K&#39;s blog" />
+
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://luokai.tech/%3Clink%20or%20path%20of%20image%20for%20opengraph,%20twitter-cards%3E"/>
+
+<meta name="twitter:title" content="算子调用"/>
+<meta name="twitter:description" content="算子调用"/>
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position":  1 ,
+      "name": "Posts",
+      "item": "https://luokai.tech/posts/"
+    }, 
+    {
+      "@type": "ListItem",
+      "position":  2 ,
+      "name": "算子调用",
+      "item": "https://luokai.tech/posts/pytorch_read/operators_call/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "算子调用",
+  "name": "算子调用",
+  "description": "算子调用",
+  "keywords": [
+    "PyTorch"
+  ],
+  "articleBody": "算子调用过程 所有原生算子均可以在 aten/src/ATen/native/native_functions.yaml 下找到定义：\n- func: add.Tensor(Tensor self, Tensor other, *, Scalar alpha=1) -\u003e Tensor device_check: NoCheck # TensorIterator structured_delegate: add.out variants: function, method dispatch: SparseCPU, SparseCUDA: add_sparse SparseCsrCPU, SparseCsrCUDA: add_sparse_csr MkldnnCPU: mkldnn_add ZeroTensor: add_zerotensor NestedTensorCPU, NestedTensorCUDA: NestedTensor_add_Tensor tags: [canonical, pointwise] 自动脚本会生成如下代码：\naten/src/ATen/core/TensorBody.h\ninline at::Tensor Tensor::add(const at::Tensor \u0026 other, const at::Scalar \u0026 alpha) const { return at::_ops::add_Tensor::call(const_cast\u003cTensor\u0026\u003e(*this), other, alpha); } aten/src/ATen/ops/add_ops.h\nstruct TORCH_API add_Tensor { using schema = at::Tensor (const at::Tensor \u0026, const at::Tensor \u0026, const at::Scalar \u0026); using ptr_schema = schema*; // See Note [static constexpr char* members for windows NVCC] STATIC_CONSTEXPR_STR_INL_EXCEPT_WIN_CUDA(name, \"aten::add\") STATIC_CONSTEXPR_STR_INL_EXCEPT_WIN_CUDA(overload_name, \"Tensor\") STATIC_CONSTEXPR_STR_INL_EXCEPT_WIN_CUDA(schema_str, \"add.Tensor(Tensor self, Tensor other, *, Scalar alpha=1) -\u003e Tensor\") static at::Tensor call(const at::Tensor \u0026 self, const at::Tensor \u0026 other, const at::Scalar \u0026 alpha); static at::Tensor redispatch(c10::DispatchKeySet dispatchKeySet, const at::Tensor \u0026 self, const at::Tensor \u0026 other, const at::Scalar \u0026 alpha); }; aten/src/ATen/Operators_2.cpp\nSTATIC_CONST_STR_OUT_OF_LINE_FOR_WIN_CUDA(add_Tensor, name, \"aten::add\") STATIC_CONST_STR_OUT_OF_LINE_FOR_WIN_CUDA(add_Tensor, overload_name, \"Tensor\") STATIC_CONST_STR_OUT_OF_LINE_FOR_WIN_CUDA(add_Tensor, schema_str, \"add.Tensor(Tensor self, Tensor other, *, Scalar alpha=1) -\u003e Tensor\") // aten::add.Tensor(Tensor self, Tensor other, *, Scalar alpha=1) -\u003e Tensor static C10_NOINLINE c10::TypedOperatorHandle\u003cadd_Tensor::schema\u003e create_add_Tensor_typed_handle() { return c10::Dispatcher::singleton() .findSchemaOrThrow(add_Tensor::name, add_Tensor::overload_name) .typed\u003cadd_Tensor::schema\u003e(); } // aten::add.Tensor(Tensor self, Tensor other, *, Scalar alpha=1) -\u003e Tensor at::Tensor add_Tensor::call(const at::Tensor \u0026 self, const at::Tensor \u0026 other, const at::Scalar \u0026 alpha) { static auto op = create_add_Tensor_typed_handle(); return op.call(self, other, alpha); } // aten::add.Tensor(Tensor self, Tensor other, *, Scalar alpha=1) -\u003e Tensor at::Tensor add_Tensor::redispatch(c10::DispatchKeySet dispatchKeySet, const at::Tensor \u0026 self, const at::Tensor \u0026 other, const at::Scalar \u0026 alpha) { static auto op = create_add_Tensor_typed_handle(); return op.redispatch(dispatchKeySet, self, other, alpha); } 通过 Dispatcher 调用对应算子\n// aten::add.out(Tensor self, Tensor other, *, Scalar alpha=1, Tensor(a!) out) -\u003e Tensor(a!) static C10_NOINLINE c10::TypedOperatorHandle\u003cadd_out::schema\u003e create_add_out_typed_handle() { return c10::Dispatcher::singleton() .findSchemaOrThrow(add_out::name, add_out::overload_name) .typed\u003cadd_out::schema\u003e(); } // aten::add.out(Tensor self, Tensor other, *, Scalar alpha=1, Tensor(a!) out) -\u003e Tensor(a!) at::Tensor \u0026 add_out::call(const at::Tensor \u0026 self, const at::Tensor \u0026 other, const at::Scalar \u0026 alpha, at::Tensor \u0026 out) { static auto op = create_add_out_typed_handle(); return op.call(self, other, alpha, out); } // aten::add.out(Tensor self, Tensor other, *, Scalar alpha=1, Tensor(a!) out) -\u003e Tensor(a!) at::Tensor \u0026 add_out::redispatch(c10::DispatchKeySet dispatchKeySet, const at::Tensor \u0026 self, const at::Tensor \u0026 other, const at::Scalar \u0026 alpha, at::Tensor \u0026 out) { static auto op = create_add_out_typed_handle(); return op.redispatch(dispatchKeySet, self, other, alpha, out); } 可以看到，最后的call函数来到了c10::Dispatcher类:\nC10_EXPORT Dispatcher\u0026 Dispatcher::realSingleton() { static Dispatcher _singleton; return _singleton; } c10::optional\u003cOperatorHandle\u003e Dispatcher::findOp(const OperatorName\u0026 overload_name) { return operatorLookupTable_.read([\u0026] (const ska::flat_hash_map\u003cOperatorName, OperatorHandle\u003e\u0026 operatorLookupTable) -\u003e c10::optional\u003cOperatorHandle\u003e { auto found = operatorLookupTable.find(overload_name); if (found == operatorLookupTable.end()) { return c10::nullopt; } return found-\u003esecond; }); } c10::optional\u003cOperatorHandle\u003e Dispatcher::findSchema(const OperatorName\u0026 overload_name) { auto it = findOp(overload_name); if (it.has_value()) { if (it-\u003ehasSchema()) { return it; } else { return c10::nullopt; } } else { return it; } } OperatorHandle Dispatcher::findSchemaOrThrow(const char* name, const char* overload_name) { auto it = findSchema({name, overload_name}); if (!it.has_value()) { // Check if we have ANYTHING; if that's the case, that means you're // missing schema auto it2 = findOp({name, overload_name}); if (!it2.has_value()) { TORCH_CHECK(false, \"Could not find schema for \", name, \".\", overload_name); } else { TORCH_CHECK(false, \"Could not find schema for \", name, \".\", overload_name, \" but we found an implementation; did you forget to def() the operator?\"); } } return it.value(); } 最后的 typed 函数返回的是一个 TypedOperatorHandle 类，它的 call 函数依旧是通过单例模式调用了静态成员的 call 函数\ntemplate\u003cclass Return, class... Args\u003e class TypedOperatorHandle\u003cReturn (Args...)\u003e final : public OperatorHandle { public: // ... C10_ALWAYS_INLINE Return call(Args... args) const { return c10::Dispatcher::singleton().call\u003cReturn, Args...\u003e(*this, std::forward\u003cArgs\u003e(args)...); } // ... }; ",
+  "wordCount" : "548",
+  "inLanguage": "zh",
+  "datePublished": "2023-02-11T00:00:00Z",
+  "dateModified": "2023-02-11T00:00:00Z",
+  "author":{
+    "@type": "Person",
+    "name": "luokai"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://luokai.tech/posts/pytorch_read/operators_call/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "K's blog",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://luokai.tech/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+
+<body class="" id="top">
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.body.classList.add('dark');
+    } else if (localStorage.getItem("pref-theme") === "light") {
+        document.body.classList.remove('dark')
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.body.classList.add('dark');
+    }
+
+</script>
+
+<header class="header">
+    <nav class="nav">
+        <div class="logo">
+            <a href="https://luokai.tech/" accesskey="h" title="K&#39;s blog (Alt + H)">K&#39;s blog</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" accesskey="t" title="(Alt + T)">
+                    <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu">
+            <li>
+                <a href="https://luokai.tech/categories" title="分类">
+                    <span>分类</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://luokai.tech/tags" title="标签">
+                    <span>标签</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://luokai.tech/search" title="搜索">
+                    <span>搜索</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://luokai.tech/archives" title="归档">
+                    <span>归档</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    <div class="breadcrumbs"><a href="https://luokai.tech/">主页</a>&nbsp;»&nbsp;<a href="https://luokai.tech/posts/">Posts</a></div>
+    <h1 class="post-title">
+      算子调用<sup><span class="entry-isdraft">&nbsp;&nbsp;[draft]</span></sup>
+    </h1>
+    <div class="post-description">
+      算子调用
+    </div>
+    <div class="post-meta"><span title='2023-02-11 00:00:00 +0000 UTC'>2023-11-11</span>&nbsp;·&nbsp;548 字&nbsp;·&nbsp;luokai
+
+</div>
+  </header> <aside id="toc-container" class="toc-container wide">
+    <div class="toc">
+        <details  open>
+            <summary accesskey="c" title="(Alt + C)">
+                <span class="details">目录</span>
+            </summary>
+
+            <div class="inner"><ul>
+                    <li>
+                        <a href="#%e7%ae%97%e5%ad%90%e8%b0%83%e7%94%a8%e8%bf%87%e7%a8%8b" aria-label="算子调用过程">算子调用过程</a>
+                    </li>
+                </ul>
+            </div>
+        </details>
+    </div>
+</aside>
+<script>
+    let activeElement;
+    let elements;
+    window.addEventListener('DOMContentLoaded', function (event) {
+        checkTocPosition();
+
+        elements = document.querySelectorAll('h1[id],h2[id],h3[id],h4[id],h5[id],h6[id]');
+         
+         activeElement = elements[0];
+         const id = encodeURI(activeElement.getAttribute('id')).toLowerCase();
+         document.querySelector(`.inner ul li a[href="#${id}"]`).classList.add('active');
+     }, false);
+
+    window.addEventListener('resize', function(event) {
+        checkTocPosition();
+    }, false);
+
+    window.addEventListener('scroll', () => {
+        
+        activeElement = Array.from(elements).find((element) => {
+            if ((getOffsetTop(element) - window.pageYOffset) > 0 && 
+                (getOffsetTop(element) - window.pageYOffset) < window.innerHeight/2) {
+                return element;
+            }
+        }) || activeElement
+
+        elements.forEach(element => {
+             const id = encodeURI(element.getAttribute('id')).toLowerCase();
+             if (element === activeElement){
+                 document.querySelector(`.inner ul li a[href="#${id}"]`).classList.add('active');
+             } else {
+                 document.querySelector(`.inner ul li a[href="#${id}"]`).classList.remove('active');
+             }
+         })
+     }, false);
+
+    const main = parseInt(getComputedStyle(document.body).getPropertyValue('--article-width'), 10);
+    const toc = parseInt(getComputedStyle(document.body).getPropertyValue('--toc-width'), 10);
+    const gap = parseInt(getComputedStyle(document.body).getPropertyValue('--gap'), 10);
+
+    function checkTocPosition() {
+        const width = document.body.scrollWidth;
+
+        if (width - main - (toc * 2) - (gap * 4) > 0) {
+            document.getElementById("toc-container").classList.add("wide");
+        } else {
+            document.getElementById("toc-container").classList.remove("wide");
+        }
+    }
+
+    function getOffsetTop(element) {
+        if (!element.getClientRects().length) {
+            return 0;
+        }
+        let rect = element.getBoundingClientRect();
+        let win = element.ownerDocument.defaultView;
+        return rect.top + win.pageYOffset;   
+    }
+</script>
+  <div class="post-content"><h2 id="算子调用过程">算子调用过程<a hidden class="anchor" aria-hidden="true" href="#算子调用过程">#</a></h2>
+<p>所有原生算子均可以在 aten/src/ATen/native/native_functions.yaml 下找到定义：</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-xml" data-lang="xml"><span class="line"><span class="cl">- func: add.Tensor(Tensor self, Tensor other, *, Scalar alpha=1) -&gt; Tensor
+</span></span><span class="line"><span class="cl">  device_check: NoCheck   # TensorIterator
+</span></span><span class="line"><span class="cl">  structured_delegate: add.out
+</span></span><span class="line"><span class="cl">  variants: function, method
+</span></span><span class="line"><span class="cl">  dispatch:
+</span></span><span class="line"><span class="cl">    SparseCPU, SparseCUDA: add_sparse
+</span></span><span class="line"><span class="cl">    SparseCsrCPU, SparseCsrCUDA: add_sparse_csr
+</span></span><span class="line"><span class="cl">    MkldnnCPU: mkldnn_add
+</span></span><span class="line"><span class="cl">    ZeroTensor: add_zerotensor
+</span></span><span class="line"><span class="cl">    NestedTensorCPU, NestedTensorCUDA: NestedTensor_add_Tensor
+</span></span><span class="line"><span class="cl">  tags: [canonical, pointwise]
+</span></span></code></pre></div><p>自动脚本会生成如下代码：<br>
+aten/src/ATen/core/TensorBody.h</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="kr">inline</span> <span class="n">at</span><span class="o">::</span><span class="n">Tensor</span> <span class="n">Tensor</span><span class="o">::</span><span class="n">add</span><span class="p">(</span><span class="k">const</span> <span class="n">at</span><span class="o">::</span><span class="n">Tensor</span> <span class="o">&amp;</span> <span class="n">other</span><span class="p">,</span> <span class="k">const</span> <span class="n">at</span><span class="o">::</span><span class="n">Scalar</span> <span class="o">&amp;</span> <span class="n">alpha</span><span class="p">)</span> <span class="k">const</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">at</span><span class="o">::</span><span class="n">_ops</span><span class="o">::</span><span class="n">add_Tensor</span><span class="o">::</span><span class="n">call</span><span class="p">(</span><span class="k">const_cast</span><span class="o">&lt;</span><span class="n">Tensor</span><span class="o">&amp;&gt;</span><span class="p">(</span><span class="o">*</span><span class="k">this</span><span class="p">),</span> <span class="n">other</span><span class="p">,</span> <span class="n">alpha</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre></div><p>aten/src/ATen/ops/add_ops.h</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="k">struct</span> <span class="nc">TORCH_API</span> <span class="n">add_Tensor</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="k">using</span> <span class="n">schema</span> <span class="o">=</span> <span class="n">at</span><span class="o">::</span><span class="n">Tensor</span> <span class="p">(</span><span class="k">const</span> <span class="n">at</span><span class="o">::</span><span class="n">Tensor</span> <span class="o">&amp;</span><span class="p">,</span> <span class="k">const</span> <span class="n">at</span><span class="o">::</span><span class="n">Tensor</span> <span class="o">&amp;</span><span class="p">,</span> <span class="k">const</span> <span class="n">at</span><span class="o">::</span><span class="n">Scalar</span> <span class="o">&amp;</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">  <span class="k">using</span> <span class="n">ptr_schema</span> <span class="o">=</span> <span class="n">schema</span><span class="o">*</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">  <span class="c1">// See Note [static constexpr char* members for windows NVCC]
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>  <span class="n">STATIC_CONSTEXPR_STR_INL_EXCEPT_WIN_CUDA</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="s">&#34;aten::add&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">  <span class="n">STATIC_CONSTEXPR_STR_INL_EXCEPT_WIN_CUDA</span><span class="p">(</span><span class="n">overload_name</span><span class="p">,</span> <span class="s">&#34;Tensor&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">  <span class="n">STATIC_CONSTEXPR_STR_INL_EXCEPT_WIN_CUDA</span><span class="p">(</span><span class="n">schema_str</span><span class="p">,</span> <span class="s">&#34;add.Tensor(Tensor self, Tensor other, *, Scalar alpha=1) -&gt; Tensor&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">  <span class="k">static</span> <span class="n">at</span><span class="o">::</span><span class="n">Tensor</span> <span class="n">call</span><span class="p">(</span><span class="k">const</span> <span class="n">at</span><span class="o">::</span><span class="n">Tensor</span> <span class="o">&amp;</span> <span class="n">self</span><span class="p">,</span> <span class="k">const</span> <span class="n">at</span><span class="o">::</span><span class="n">Tensor</span> <span class="o">&amp;</span> <span class="n">other</span><span class="p">,</span> <span class="k">const</span> <span class="n">at</span><span class="o">::</span><span class="n">Scalar</span> <span class="o">&amp;</span> <span class="n">alpha</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">  <span class="k">static</span> <span class="n">at</span><span class="o">::</span><span class="n">Tensor</span> <span class="n">redispatch</span><span class="p">(</span><span class="n">c10</span><span class="o">::</span><span class="n">DispatchKeySet</span> <span class="n">dispatchKeySet</span><span class="p">,</span> <span class="k">const</span> <span class="n">at</span><span class="o">::</span><span class="n">Tensor</span> <span class="o">&amp;</span> <span class="n">self</span><span class="p">,</span> <span class="k">const</span> <span class="n">at</span><span class="o">::</span><span class="n">Tensor</span> <span class="o">&amp;</span> <span class="n">other</span><span class="p">,</span> <span class="k">const</span> <span class="n">at</span><span class="o">::</span><span class="n">Scalar</span> <span class="o">&amp;</span> <span class="n">alpha</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="p">};</span>
+</span></span></code></pre></div><p>aten/src/ATen/Operators_2.cpp</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="n">STATIC_CONST_STR_OUT_OF_LINE_FOR_WIN_CUDA</span><span class="p">(</span><span class="n">add_Tensor</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="s">&#34;aten::add&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="n">STATIC_CONST_STR_OUT_OF_LINE_FOR_WIN_CUDA</span><span class="p">(</span><span class="n">add_Tensor</span><span class="p">,</span> <span class="n">overload_name</span><span class="p">,</span> <span class="s">&#34;Tensor&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="n">STATIC_CONST_STR_OUT_OF_LINE_FOR_WIN_CUDA</span><span class="p">(</span><span class="n">add_Tensor</span><span class="p">,</span> <span class="n">schema_str</span><span class="p">,</span> <span class="s">&#34;add.Tensor(Tensor self, Tensor other, *, Scalar alpha=1) -&gt; Tensor&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// aten::add.Tensor(Tensor self, Tensor other, *, Scalar alpha=1) -&gt; Tensor
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="k">static</span> <span class="n">C10_NOINLINE</span> <span class="n">c10</span><span class="o">::</span><span class="n">TypedOperatorHandle</span><span class="o">&lt;</span><span class="n">add_Tensor</span><span class="o">::</span><span class="n">schema</span><span class="o">&gt;</span> <span class="n">create_add_Tensor_typed_handle</span><span class="p">()</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="k">return</span> <span class="n">c10</span><span class="o">::</span><span class="n">Dispatcher</span><span class="o">::</span><span class="n">singleton</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">      <span class="p">.</span><span class="n">findSchemaOrThrow</span><span class="p">(</span><span class="n">add_Tensor</span><span class="o">::</span><span class="n">name</span><span class="p">,</span> <span class="n">add_Tensor</span><span class="o">::</span><span class="n">overload_name</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">      <span class="p">.</span><span class="n">typed</span><span class="o">&lt;</span><span class="n">add_Tensor</span><span class="o">::</span><span class="n">schema</span><span class="o">&gt;</span><span class="p">();</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// aten::add.Tensor(Tensor self, Tensor other, *, Scalar alpha=1) -&gt; Tensor
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="n">at</span><span class="o">::</span><span class="n">Tensor</span> <span class="n">add_Tensor</span><span class="o">::</span><span class="n">call</span><span class="p">(</span><span class="k">const</span> <span class="n">at</span><span class="o">::</span><span class="n">Tensor</span> <span class="o">&amp;</span> <span class="n">self</span><span class="p">,</span> <span class="k">const</span> <span class="n">at</span><span class="o">::</span><span class="n">Tensor</span> <span class="o">&amp;</span> <span class="n">other</span><span class="p">,</span> <span class="k">const</span> <span class="n">at</span><span class="o">::</span><span class="n">Scalar</span> <span class="o">&amp;</span> <span class="n">alpha</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="k">static</span> <span class="k">auto</span> <span class="n">op</span> <span class="o">=</span> <span class="n">create_add_Tensor_typed_handle</span><span class="p">();</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">op</span><span class="p">.</span><span class="n">call</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="n">other</span><span class="p">,</span> <span class="n">alpha</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// aten::add.Tensor(Tensor self, Tensor other, *, Scalar alpha=1) -&gt; Tensor
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="n">at</span><span class="o">::</span><span class="n">Tensor</span> <span class="n">add_Tensor</span><span class="o">::</span><span class="n">redispatch</span><span class="p">(</span><span class="n">c10</span><span class="o">::</span><span class="n">DispatchKeySet</span> <span class="n">dispatchKeySet</span><span class="p">,</span> <span class="k">const</span> <span class="n">at</span><span class="o">::</span><span class="n">Tensor</span> <span class="o">&amp;</span> <span class="n">self</span><span class="p">,</span> <span class="k">const</span> <span class="n">at</span><span class="o">::</span><span class="n">Tensor</span> <span class="o">&amp;</span> <span class="n">other</span><span class="p">,</span> <span class="k">const</span> <span class="n">at</span><span class="o">::</span><span class="n">Scalar</span> <span class="o">&amp;</span> <span class="n">alpha</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="k">static</span> <span class="k">auto</span> <span class="n">op</span> <span class="o">=</span> <span class="n">create_add_Tensor_typed_handle</span><span class="p">();</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">op</span><span class="p">.</span><span class="n">redispatch</span><span class="p">(</span><span class="n">dispatchKeySet</span><span class="p">,</span> <span class="n">self</span><span class="p">,</span> <span class="n">other</span><span class="p">,</span> <span class="n">alpha</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre></div><p>通过 <a href="dispatcher">Dispatcher</a> 调用对应算子</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="c1">// aten::add.out(Tensor self, Tensor other, *, Scalar alpha=1, Tensor(a!) out) -&gt; Tensor(a!)
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="k">static</span> <span class="n">C10_NOINLINE</span> <span class="n">c10</span><span class="o">::</span><span class="n">TypedOperatorHandle</span><span class="o">&lt;</span><span class="n">add_out</span><span class="o">::</span><span class="n">schema</span><span class="o">&gt;</span> <span class="n">create_add_out_typed_handle</span><span class="p">()</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="k">return</span> <span class="n">c10</span><span class="o">::</span><span class="n">Dispatcher</span><span class="o">::</span><span class="n">singleton</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">      <span class="p">.</span><span class="n">findSchemaOrThrow</span><span class="p">(</span><span class="n">add_out</span><span class="o">::</span><span class="n">name</span><span class="p">,</span> <span class="n">add_out</span><span class="o">::</span><span class="n">overload_name</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">      <span class="p">.</span><span class="n">typed</span><span class="o">&lt;</span><span class="n">add_out</span><span class="o">::</span><span class="n">schema</span><span class="o">&gt;</span><span class="p">();</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// aten::add.out(Tensor self, Tensor other, *, Scalar alpha=1, Tensor(a!) out) -&gt; Tensor(a!)
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="n">at</span><span class="o">::</span><span class="n">Tensor</span> <span class="o">&amp;</span> <span class="n">add_out</span><span class="o">::</span><span class="n">call</span><span class="p">(</span><span class="k">const</span> <span class="n">at</span><span class="o">::</span><span class="n">Tensor</span> <span class="o">&amp;</span> <span class="n">self</span><span class="p">,</span> <span class="k">const</span> <span class="n">at</span><span class="o">::</span><span class="n">Tensor</span> <span class="o">&amp;</span> <span class="n">other</span><span class="p">,</span> <span class="k">const</span> <span class="n">at</span><span class="o">::</span><span class="n">Scalar</span> <span class="o">&amp;</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">at</span><span class="o">::</span><span class="n">Tensor</span> <span class="o">&amp;</span> <span class="n">out</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">static</span> <span class="k">auto</span> <span class="n">op</span> <span class="o">=</span> <span class="n">create_add_out_typed_handle</span><span class="p">();</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">op</span><span class="p">.</span><span class="n">call</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="n">other</span><span class="p">,</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">out</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// aten::add.out(Tensor self, Tensor other, *, Scalar alpha=1, Tensor(a!) out) -&gt; Tensor(a!)
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="n">at</span><span class="o">::</span><span class="n">Tensor</span> <span class="o">&amp;</span> <span class="n">add_out</span><span class="o">::</span><span class="n">redispatch</span><span class="p">(</span><span class="n">c10</span><span class="o">::</span><span class="n">DispatchKeySet</span> <span class="n">dispatchKeySet</span><span class="p">,</span> <span class="k">const</span> <span class="n">at</span><span class="o">::</span><span class="n">Tensor</span> <span class="o">&amp;</span> <span class="n">self</span><span class="p">,</span> <span class="k">const</span> <span class="n">at</span><span class="o">::</span><span class="n">Tensor</span> <span class="o">&amp;</span> <span class="n">other</span><span class="p">,</span> <span class="k">const</span> <span class="n">at</span><span class="o">::</span><span class="n">Scalar</span> <span class="o">&amp;</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">at</span><span class="o">::</span><span class="n">Tensor</span> <span class="o">&amp;</span> <span class="n">out</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">static</span> <span class="k">auto</span> <span class="n">op</span> <span class="o">=</span> <span class="n">create_add_out_typed_handle</span><span class="p">();</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">op</span><span class="p">.</span><span class="n">redispatch</span><span class="p">(</span><span class="n">dispatchKeySet</span><span class="p">,</span> <span class="n">self</span><span class="p">,</span> <span class="n">other</span><span class="p">,</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">out</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre></div><p>可以看到，最后的call函数来到了c10::Dispatcher类:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="n">C10_EXPORT</span> <span class="n">Dispatcher</span><span class="o">&amp;</span> <span class="n">Dispatcher</span><span class="o">::</span><span class="n">realSingleton</span><span class="p">()</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="k">static</span> <span class="n">Dispatcher</span> <span class="n">_singleton</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">  <span class="k">return</span> <span class="n">_singleton</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="n">c10</span><span class="o">::</span><span class="n">optional</span><span class="o">&lt;</span><span class="n">OperatorHandle</span><span class="o">&gt;</span> <span class="n">Dispatcher</span><span class="o">::</span><span class="n">findOp</span><span class="p">(</span><span class="k">const</span> <span class="n">OperatorName</span><span class="o">&amp;</span> <span class="n">overload_name</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="k">return</span> <span class="n">operatorLookupTable_</span><span class="p">.</span><span class="n">read</span><span class="p">([</span><span class="o">&amp;</span><span class="p">]</span> <span class="p">(</span><span class="k">const</span> <span class="n">ska</span><span class="o">::</span><span class="n">flat_hash_map</span><span class="o">&lt;</span><span class="n">OperatorName</span><span class="p">,</span> <span class="n">OperatorHandle</span><span class="o">&gt;&amp;</span> <span class="n">operatorLookupTable</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">c10</span><span class="o">::</span><span class="n">optional</span><span class="o">&lt;</span><span class="n">OperatorHandle</span><span class="o">&gt;</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">auto</span> <span class="n">found</span> <span class="o">=</span> <span class="n">operatorLookupTable</span><span class="p">.</span><span class="n">find</span><span class="p">(</span><span class="n">overload_name</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="p">(</span><span class="n">found</span> <span class="o">==</span> <span class="n">operatorLookupTable</span><span class="p">.</span><span class="n">end</span><span class="p">())</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">      <span class="k">return</span> <span class="n">c10</span><span class="o">::</span><span class="n">nullopt</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">found</span><span class="o">-&gt;</span><span class="n">second</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">});</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="n">c10</span><span class="o">::</span><span class="n">optional</span><span class="o">&lt;</span><span class="n">OperatorHandle</span><span class="o">&gt;</span> <span class="n">Dispatcher</span><span class="o">::</span><span class="n">findSchema</span><span class="p">(</span><span class="k">const</span> <span class="n">OperatorName</span><span class="o">&amp;</span> <span class="n">overload_name</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="k">auto</span> <span class="n">it</span> <span class="o">=</span> <span class="n">findOp</span><span class="p">(</span><span class="n">overload_name</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">  <span class="k">if</span> <span class="p">(</span><span class="n">it</span><span class="p">.</span><span class="n">has_value</span><span class="p">())</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="p">(</span><span class="n">it</span><span class="o">-&gt;</span><span class="n">hasSchema</span><span class="p">())</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">      <span class="k">return</span> <span class="n">it</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">      <span class="k">return</span> <span class="n">c10</span><span class="o">::</span><span class="n">nullopt</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">it</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="n">OperatorHandle</span> <span class="n">Dispatcher</span><span class="o">::</span><span class="n">findSchemaOrThrow</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="n">name</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="n">overload_name</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="k">auto</span> <span class="n">it</span> <span class="o">=</span> <span class="n">findSchema</span><span class="p">({</span><span class="n">name</span><span class="p">,</span> <span class="n">overload_name</span><span class="p">});</span>
+</span></span><span class="line"><span class="cl">  <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">it</span><span class="p">.</span><span class="n">has_value</span><span class="p">())</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="c1">// Check if we have ANYTHING; if that&#39;s the case, that means you&#39;re
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="c1">// missing schema
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="k">auto</span> <span class="n">it2</span> <span class="o">=</span> <span class="n">findOp</span><span class="p">({</span><span class="n">name</span><span class="p">,</span> <span class="n">overload_name</span><span class="p">});</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">it2</span><span class="p">.</span><span class="n">has_value</span><span class="p">())</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">      <span class="n">TORCH_CHECK</span><span class="p">(</span><span class="nb">false</span><span class="p">,</span> <span class="s">&#34;Could not find schema for &#34;</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="s">&#34;.&#34;</span><span class="p">,</span> <span class="n">overload_name</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">      <span class="n">TORCH_CHECK</span><span class="p">(</span><span class="nb">false</span><span class="p">,</span> <span class="s">&#34;Could not find schema for &#34;</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="s">&#34;.&#34;</span><span class="p">,</span> <span class="n">overload_name</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">        <span class="s">&#34; but we found an implementation; did you forget to def() the operator?&#34;</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">  <span class="p">}</span>
+</span></span><span class="line"><span class="cl">  <span class="k">return</span> <span class="n">it</span><span class="p">.</span><span class="n">value</span><span class="p">();</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre></div><p>最后的 typed 函数返回的是一个 TypedOperatorHandle 类，它的 call 函数依旧是通过单例模式调用了静态成员的 call 函数</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="k">template</span><span class="o">&lt;</span><span class="k">class</span> <span class="nc">Return</span><span class="p">,</span> <span class="k">class</span><span class="err">... </span><span class="nc">Args</span><span class="o">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">TypedOperatorHandle</span><span class="o">&lt;</span><span class="n">Return</span> <span class="p">(</span><span class="n">Args</span><span class="p">...)</span><span class="o">&gt;</span> <span class="k">final</span> <span class="o">:</span> <span class="k">public</span> <span class="n">OperatorHandle</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl"><span class="k">public</span><span class="o">:</span>
+</span></span><span class="line"><span class="cl">  <span class="c1">// ...
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>  <span class="n">C10_ALWAYS_INLINE</span> <span class="n">Return</span> <span class="n">call</span><span class="p">(</span><span class="n">Args</span><span class="p">...</span> <span class="n">args</span><span class="p">)</span> <span class="k">const</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">c10</span><span class="o">::</span><span class="n">Dispatcher</span><span class="o">::</span><span class="n">singleton</span><span class="p">().</span><span class="n">call</span><span class="o">&lt;</span><span class="n">Return</span><span class="p">,</span> <span class="n">Args</span><span class="p">...</span><span class="o">&gt;</span><span class="p">(</span><span class="o">*</span><span class="k">this</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">forward</span><span class="o">&lt;</span><span class="n">Args</span><span class="o">&gt;</span><span class="p">(</span><span class="n">args</span><span class="p">)...);</span>
+</span></span><span class="line"><span class="cl">  <span class="p">}</span>
+</span></span><span class="line"><span class="cl">  <span class="c1">// ...
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="p">};</span>
+</span></span></code></pre></div>
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+      <li><a href="https://luokai.tech/tags/pytorch/">PyTorch</a></li>
+    </ul>
+<nav class="paginav">
+  <a class="prev" href="https://luokai.tech/posts/pytorch_read/torchscript/">
+    <span class="title">« 上一页</span>
+    <br>
+    <span>torchscript</span>
+  </a>
+  <a class="next" href="https://luokai.tech/posts/pytorch_read/operators_register/">
+    <span class="title">下一页 »</span>
+    <br>
+    <span>原生算子注册</span>
+  </a>
+</nav>
+
+  </footer>
+</article>
+    </main>
+    
+<footer class="footer">
+    <span>&copy; 2023 <a href="https://luokai.tech/">K&#39;s blog</a></span>
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" aria-label="go to top" title="Go to Top (Alt + G)" class="top-link" id="top-link" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentColor">
+        <path d="M12 6H0l6-6z" />
+    </svg>
+</a>
+
+<script>
+    let menu = document.getElementById('menu')
+    if (menu) {
+        menu.scrollLeft = localStorage.getItem("menu-scroll-position");
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var mybutton = document.getElementById("top-link");
+    window.onscroll = function () {
+        if (document.body.scrollTop > 800 || document.documentElement.scrollTop > 800) {
+            mybutton.style.visibility = "visible";
+            mybutton.style.opacity = "1";
+        } else {
+            mybutton.style.visibility = "hidden";
+            mybutton.style.opacity = "0";
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        if (document.body.className.includes("dark")) {
+            document.body.classList.remove('dark');
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            document.body.classList.add('dark');
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+<script>
+    document.querySelectorAll('pre > code').forEach((codeblock) => {
+        const container = codeblock.parentNode.parentNode;
+
+        const copybutton = document.createElement('button');
+        copybutton.classList.add('copy-code');
+        copybutton.innerHTML = '复制';
+
+        function copyingDone() {
+            copybutton.innerHTML = '已复制！';
+            setTimeout(() => {
+                copybutton.innerHTML = '复制';
+            }, 2000);
+        }
+
+        copybutton.addEventListener('click', (cb) => {
+            if ('clipboard' in navigator) {
+                navigator.clipboard.writeText(codeblock.textContent);
+                copyingDone();
+                return;
+            }
+
+            const range = document.createRange();
+            range.selectNodeContents(codeblock);
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+            try {
+                document.execCommand('copy');
+                copyingDone();
+            } catch (e) { };
+            selection.removeRange(range);
+        });
+
+        if (container.classList.contains("highlight")) {
+            container.appendChild(copybutton);
+        } else if (container.parentNode.firstChild == container) {
+            
+        } else if (codeblock.parentNode.parentNode.parentNode.parentNode.parentNode.nodeName == "TABLE") {
+            
+            codeblock.parentNode.parentNode.parentNode.parentNode.parentNode.appendChild(copybutton);
+        } else {
+            
+            codeblock.parentNode.appendChild(copybutton);
+        }
+    });
+</script>
+</body>
+
+</html>
