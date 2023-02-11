@@ -5,12 +5,12 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <meta name="robots" content="index, follow">
-<title>代码结构与编译 | K&#39;s blog</title>
+<title>PyTorch 源码阅读笔记（0）：代码结构与编译 | K&#39;s blog</title>
 <meta name="keywords" content="PyTorch">
 <meta name="description" content="代码结构与编译">
 <meta name="author" content="luokai">
 <link rel="canonical" href="https://luokai.tech/posts/pytorch_read/build/">
-<link crossorigin="anonymous" href="/assets/css/stylesheet.1198b75e51d35b5b7d65621cd91bb8972beea3ec5e25ffa5777e6c311a24d49d.css" integrity="sha256-EZi3XlHTW1t9ZWIc2Ru4lyvuo&#43;xeJf&#43;ld35sMRok1J0=" rel="preload stylesheet" as="style">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.938a2ae405ffe5d9d39bf4fcbd809c6c18f56332c2c71b483718db4b263d5c97.css" integrity="sha256-k4oq5AX/5dnTm/T8vYCcbBj1YzLCxxtINxjbSyY9XJc=" rel="preload stylesheet" as="style">
 <script defer crossorigin="anonymous" src="/assets/js/highlight.f413e19d0714851f6474e7ee9632408e58ac146fbdbe62747134bea2fa3415e0.js" integrity="sha256-9BPhnQcUhR9kdOfuljJAjlisFG&#43;9vmJ0cTS&#43;ovo0FeA="
     onload="hljs.initHighlightingOnLoad();"></script>
 <link rel="icon" href="https://luokai.tech/favicon.ico">
@@ -68,17 +68,17 @@ if (!doNotTrack) {
 	
 	ga('send', 'pageview');
 }
-</script><meta property="og:title" content="代码结构与编译" />
+</script><meta property="og:title" content="PyTorch 源码阅读笔记（0）：代码结构与编译" />
 <meta property="og:description" content="代码结构与编译" />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://luokai.tech/posts/pytorch_read/build/" /><meta property="og:image" content="https://luokai.tech/%3Clink%20or%20path%20of%20image%20for%20opengraph,%20twitter-cards%3E"/><meta property="article:section" content="posts" />
-<meta property="article:published_time" content="2023-02-11T11:05:08+08:00" />
-<meta property="article:modified_time" content="2023-02-11T11:05:08+08:00" /><meta property="og:site_name" content="K&#39;s blog" />
+<meta property="article:published_time" content="2023-02-11T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-02-11T00:00:00+00:00" /><meta property="og:site_name" content="K&#39;s blog" />
 
 <meta name="twitter:card" content="summary_large_image"/>
 <meta name="twitter:image" content="https://luokai.tech/%3Clink%20or%20path%20of%20image%20for%20opengraph,%20twitter-cards%3E"/>
 
-<meta name="twitter:title" content="代码结构与编译"/>
+<meta name="twitter:title" content="PyTorch 源码阅读笔记（0）：代码结构与编译"/>
 <meta name="twitter:description" content="代码结构与编译"/>
 
 
@@ -96,7 +96,7 @@ if (!doNotTrack) {
     {
       "@type": "ListItem",
       "position":  2 ,
-      "name": "代码结构与编译",
+      "name": "PyTorch 源码阅读笔记（0）：代码结构与编译",
       "item": "https://luokai.tech/posts/pytorch_read/build/"
     }
   ]
@@ -106,8 +106,8 @@ if (!doNotTrack) {
 {
   "@context": "https://schema.org",
   "@type": "BlogPosting",
-  "headline": "代码结构与编译",
-  "name": "代码结构与编译",
+  "headline": "PyTorch 源码阅读笔记（0）：代码结构与编译",
+  "name": "PyTorch 源码阅读笔记（0）：代码结构与编译",
   "description": "代码结构与编译",
   "keywords": [
     "PyTorch"
@@ -115,8 +115,8 @@ if (!doNotTrack) {
   "articleBody": "PyTorch代码目录结构 参考PyTorch官方描述，大致代码结构如下所述：\nc10 - Core library —— 核心库，包含最基本的功能，aten/src/ATen/core中的代码在逐渐往此处迁移 aten - PyTorch C++ 张量库，不包括自动梯度支持 aten/src - aten/src/ATen aten/src/ATen/core - 核心函数库，逐步往c10迁移中。 aten/src/ATen/native - 原生算子库，大部分CPU算子在此一级目录下，除了一些有特殊编译需求的算子在cpu目录下 aten/src/ATen/native/cpu - 某些需要类似AVX等特殊指令集编译的cpu算子实现 aten/src/ATen/native/cuda - CUDA 算子 aten/src/ATen/native/sparse - CPU 和 CUDA 的稀疏矩阵算子 aten/src/ATen/native/mkl，aten/src/ATen/native/mkldnn，…… - 如文件夹描述，对应的算子 torch - 实际的PyTorch库，除了torch/csrc之外的都是Python模块 torch/csrc - Python 和 C++ 混编库 torch/csrc/jit - TorchScript JIT frontend torch/csrc/autograd - 自动微分实现 torch/csrc/api - The PyTorch C++ frontend. torch/csrc/distributed - tools - 代码生成模块，PyTorch很多代码是在编译时自动生成的 test - Python前端单元测试模块，C++前端的单元测试在其他文件夹 caffe2 - Caffe2 库合并入PyTorch，具体合并了哪些官方说的太抽象，以后看到了再更新 PyTorch 编译 PyTorch 官方有单独打包的 C++ 库 libtorch\n首先clone仓库，由于会下载很多第三方仓库，需要较长时间，并且克隆失败的库可能会导致编译失败:\ngit clone -b master --recurse-submodule https://github.com/PyTorch/PyTorch.git 直接使用官方的cmake文件编译就可以，即使是单独编译 C++ 模块也需要安装Python，因为有大量代码是通过Python脚本生成\n我使用额外参数：\n-DBUILD_SHARED_LIBS:BOOL=ON -DCMAKE_BUILD_TYPE:STRING=Debug -DPYTHON_EXECUTABLE:PATH=/opt/miniconda3/bin/python3 测试一下C++库的使用:\n#include #include #include #include #include #include #include #include \"../include/linear.hpp\" void linear_test() { int data_size = 50000, batch_size = 5000, in_feat = 3, out_feat = 4; torch::Tensor real_w = torch::randn({in_feat, out_feat}, torch::dtype(torch::kDouble)); auto real_w_key_set = (real_w.unsafeGetTensorImpl())-\u003ekey_set(); torch::Tensor real_b = torch::randn({out_feat}, torch::dtype(torch::kDouble)); torch::Tensor train_x = torch::randn({data_size, in_feat}, torch::dtype(torch::kDouble)); auto train_y = torch::matmul(train_x, real_w); train_y = torch::add(train_y, real_b); OpsLinear linear{in_feat, out_feat}; torch::optim::SGD sgd(linear-\u003eparameters(), torch::optim::SGDOptions(1e-6)); int num_batch = data_size / batch_size; int epochs = 500; double min_loss{99999}; torch::Tensor best_w = torch::rand_like(linear-\u003eW); for (int epoch = 0; epoch \u003c epochs; epoch++) { for (int batch = 0; batch \u003c num_batch; batch++) { torch::Tensor real_x = train_x.index( {torch::indexing::Slice(batch * batch_size, (batch + 1) * batch_size), \"...\"}); torch::Tensor real_y = train_y.index( {torch::indexing::Slice(batch * batch_size, (batch + 1) * batch_size), \"...\"}); torch::Tensor pred_y = linear-\u003eforward(real_x); torch::Tensor loss = torch::mse_loss(pred_y, real_y); // sgd.zero_grad(); loss.backward(); sgd.step(); std::printf(\"\\r[%2d/%2d][%3d/%3d] loss: %.4f\", epoch, epochs, batch, num_batch, loss.item\u003cdouble\u003e()); if (loss.item\u003cdouble\u003e() \u003c min_loss) { min_loss = loss.item\u003cdouble\u003e(); best_w = torch::clone(linear-\u003eW); } } } std::cout \u003c\u003c \"\" \u003c\u003c std::endl; std::cout \u003c\u003c \"real_w: \" \u003c\u003c real_w \u003c\u003c \"\\n\" \u003c\u003c \"real_b: \" \u003c\u003c real_b \u003c\u003c std::endl; std::cout \u003c\u003c \"min loss: \" \u003c\u003c min_loss \u003c\u003c \"\\n\" \u003c\u003c \"w: \" \u003c\u003c best_w \u003c\u003c std::endl; } cmake配置文件:\ncmake_minimum_required(VERSION 3.15) set(CMAKE_CXX_STANDARD 14) set(CMAKE_EXPORT_COMPILE_COMMANDS ON) set(CMAKE_CUDA_ARCHITECTURES \"75\") set(CMAKE_CUDA_COMPILER \"/usr/local/cuda/bin/nvcc\") set(CMAKE_PREFIX_PATH \"/data/build/libtorch\") project(ops LANGUAGES CXX C CUDA) set(Python3_ROOT_DIR \"/opt/miniconda3\") find_package(Python3 REQUIRED COMPONENTS Interpreter Development) find_package(Torch REQUIRED) message(\"torch : \" ${TORCH_LIBRARIES}) aux_source_directory(./src src) aux_source_directory(./include include) aux_source_directory(./test test) add_executable(ops ${src} ${include}) target_link_libraries(ops ${TORCH_LIBRARIES} Python3::Python) 可能有一些库的依赖问题，安装对应的库即可。\n",
   "wordCount" : "341",
   "inLanguage": "zh",
-  "datePublished": "2023-02-11T11:05:08+08:00",
-  "dateModified": "2023-02-11T11:05:08+08:00",
+  "datePublished": "2023-02-11T00:00:00Z",
+  "dateModified": "2023-02-11T00:00:00Z",
   "author":{
     "@type": "Person",
     "name": "luokai"
@@ -206,12 +206,12 @@ if (!doNotTrack) {
   <header class="post-header">
     <div class="breadcrumbs"><a href="https://luokai.tech/">主页</a>&nbsp;»&nbsp;<a href="https://luokai.tech/posts/">Posts</a></div>
     <h1 class="post-title">
-      代码结构与编译
+      PyTorch 源码阅读笔记（0）：代码结构与编译
     </h1>
     <div class="post-description">
       代码结构与编译
     </div>
-    <div class="post-meta"><span title='2023-02-11 11:05:08 +0800 CST'>2023-11-11</span>&nbsp;·&nbsp;341 字&nbsp;·&nbsp;luokai
+    <div class="post-meta"><span title='2023-02-11 00:00:00 +0000 UTC'>2023-11-11</span>&nbsp;·&nbsp;341 字&nbsp;·&nbsp;luokai
 
 </div>
   </header> <aside id="toc-container" class="toc-container wide">
@@ -434,7 +434,7 @@ frontend</li>
   <a class="next" href="https://luokai.tech/posts/pytorch_read/dispatcher/">
     <span class="title">下一页 »</span>
     <br>
-    <span>dispatcher</span>
+    <span>PyTorch 源码阅读笔记（1）：dispatcher</span>
   </a>
 </nav>
 

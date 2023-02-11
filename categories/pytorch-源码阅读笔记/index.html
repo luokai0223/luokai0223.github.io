@@ -10,7 +10,7 @@
 <meta name="description" content="luokai&#39;s blog">
 <meta name="author" content="luokai">
 <link rel="canonical" href="https://luokai.tech/categories/pytorch-%E6%BA%90%E7%A0%81%E9%98%85%E8%AF%BB%E7%AC%94%E8%AE%B0/">
-<link crossorigin="anonymous" href="/assets/css/stylesheet.1198b75e51d35b5b7d65621cd91bb8972beea3ec5e25ffa5777e6c311a24d49d.css" integrity="sha256-EZi3XlHTW1t9ZWIc2Ru4lyvuo&#43;xeJf&#43;ld35sMRok1J0=" rel="preload stylesheet" as="style">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.938a2ae405ffe5d9d39bf4fcbd809c6c18f56332c2c71b483718db4b263d5c97.css" integrity="sha256-k4oq5AX/5dnTm/T8vYCcbBj1YzLCxxtINxjbSyY9XJc=" rel="preload stylesheet" as="style">
 <link rel="icon" href="https://luokai.tech/favicon.ico">
 <link rel="icon" type="image/png" sizes="16x16" href="https://luokai.tech/favicon-16x16.png">
 <link rel="icon" type="image/png" sizes="32x32" href="https://luokai.tech/favicon-32x32.png">
@@ -152,20 +152,20 @@ if (!doNotTrack) {
 
 <article class="post-entry tag-entry"> 
   <header class="entry-header">
-    <h2>代码结构与编译
+    <h2>PyTorch 源码阅读笔记（0）：代码结构与编译
     </h2>
   </header>
   <div class="entry-content">
     <p>PyTorch代码目录结构 参考PyTorch官方描述，大致代码结构如下所述：
 c10 - Core library —— 核心库，包含最基本的功能，aten/src/ATen/core中的代码在逐渐往此处迁移 aten - PyTorch C&#43;&#43; 张量库，不包括自动梯度支持 aten/src - aten/src/ATen aten/src/ATen/core - 核心函数库，逐步往c10迁移中。 aten/src/ATen/native - 原生算子库，大部分CPU算子在此一级目录下，除了一些有特殊编译需求的算子在cpu目录下 aten/src/ATen/native/cpu - 某些需要类似AVX等特殊指令集编译的cpu算子实现 aten/src/ATen/native/cuda - CUDA 算子 aten/src/ATen/native/sparse - CPU 和 CUDA 的稀疏矩阵算子 aten/src/ATen/native/mkl，aten/src/ATen/native/mkldnn，…… - 如文件夹描述，对应的算子 torch - 实际的PyTorch库，除了torch/csrc之外的都是Python模块 torch/csrc - Python 和 C&#43;&#43; 混编库 torch/csrc/jit - TorchScript JIT frontend torch/csrc/autograd - 自动微分实现 torch/csrc/api - The PyTorch C&#43;&#43; frontend. torch/csrc/distributed - tools - 代码生成模块，PyTorch很多代码是在编译时自动生成的 test - Python前端单元测试模块，C&#43;&#43;前端的单元测试在其他文件夹 caffe2 - Caffe2 库合并入PyTorch，具体合并了哪些官方说的太抽象，以后看到了再更新 PyTorch 编译 PyTorch 官方有单独打包的 C&#43;&#43; 库 libtorch...</p>
   </div>
-  <footer class="entry-footer"><span title='2023-02-11 11:05:08 +0800 CST'>2023-11-11</span>&nbsp;·&nbsp;341 字&nbsp;·&nbsp;luokai</footer>
-  <a class="entry-link" aria-label="post link to 代码结构与编译" href="https://luokai.tech/posts/pytorch_read/build/"></a>
+  <footer class="entry-footer"><span title='2023-02-11 00:00:00 +0000 UTC'>2023-11-11</span>&nbsp;·&nbsp;341 字&nbsp;·&nbsp;luokai</footer>
+  <a class="entry-link" aria-label="post link to PyTorch 源码阅读笔记（0）：代码结构与编译" href="https://luokai.tech/posts/pytorch_read/build/"></a>
 </article>
 
 <article class="post-entry tag-entry"> 
   <header class="entry-header">
-    <h2>dispatcher<sup><span class="entry-isdraft">&nbsp;&nbsp;[draft]</span></sup>
+    <h2>PyTorch 源码阅读笔记（1）：dispatcher<sup><span class="entry-isdraft">&nbsp;&nbsp;[draft]</span></sup>
     </h2>
   </header>
   <div class="entry-content">
@@ -175,7 +175,57 @@ PyTorch 作为多平台的神经网络框架，需要实现这样一种功能：
 dispatcher 类 class TORCH_API Dispatcher final { // 嵌套结构体 struct OperatorDef final { explicit OperatorDef(OperatorName&amp;&amp; op_name) : op(std::move(op_name)) {} impl::OperatorEntry op; size_t def_count = 0; size_t def_and_impl_count = 0; }; // 成员函数 C10_ALWAYS_INLINE static Dispatcher&amp; singleton() { // ... static Dispatcher&amp; s = realSingleton(); /* 全局单例 C10_EXPORT Dispatcher&amp; Dispatcher::realSingleton() { static Dispatcher _singleton; return _singleton; } */ return s; } // 成员变量 LeftRight&lt;ska::flat_hash_map&lt;OperatorName, OperatorHandle&gt;&gt; operatorLookupTable_; /* operatorLookupTable_是一个算子表 LeftRight 实现参考：[Brief Announcement: Left-Right - A Concurrency Control Technique with Wait-Free Population Oblivious Reads](https://hal....</p>
   </div>
   <footer class="entry-footer"><span title='2023-02-11 00:00:00 +0000 UTC'>2023-11-11</span>&nbsp;·&nbsp;475 字&nbsp;·&nbsp;luokai</footer>
-  <a class="entry-link" aria-label="post link to dispatcher" href="https://luokai.tech/posts/pytorch_read/dispatcher/"></a>
+  <a class="entry-link" aria-label="post link to PyTorch 源码阅读笔记（1）：dispatcher" href="https://luokai.tech/posts/pytorch_read/dispatcher/"></a>
+</article>
+
+<article class="post-entry tag-entry"> 
+  <header class="entry-header">
+    <h2>PyTorch 源码阅读笔记（2）：原生算子注册<sup><span class="entry-isdraft">&nbsp;&nbsp;[draft]</span></sup>
+    </h2>
+  </header>
+  <div class="entry-content">
+    <p>算子定义 按照官方描述，所有的原生算子（函数）都定义在aten/src/ATen/native/native_functions.yaml文件里面，以一个add算子为例：
+如下原生算子：
+- func: add.Tensor(Tensor self, Tensor other, *, Scalar alpha=1) -&gt; Tensor device_check: NoCheck # TensorIterator structured_delegate: add.out variants: function, method dispatch: SparseCPU, SparseCUDA: add_sparse SparseCsrCPU, SparseCsrCUDA: add_sparse_csr MkldnnCPU: mkldnn_add ZeroTensor: add_zerotensor NestedTensorCPU, NestedTensorCUDA: NestedTensor_add_Tensor tags: [canonical, pointwise] 算子 schema 注册 算子通过如下宏进行 schema 注册： cmake-build-debug-wsl-gcc/aten/src/ATen/RegisterSchema.cpp
+// TORCH_LIBRARY(aten, m) 展开如下 static void TORCH_LIBRARY_init_aten(torch::Library&amp;); static const torch::detail::TorchLibraryInit TORCH_LIBRARY_static_init_aten( torch::Library::DEF, &amp;TORCH_LIBRARY_init_aten, &#34;aten&#34;, c10::nullopt, &#34;_file_name_&#34;, 6); void TORCH_LIBRARY_init_aten(torch::Library&amp; m) { m.def(&#34;add.Tensor(Tensor self, Tensor other, *, Scalar alpha=1) -&gt; Tensor&#34;, {at::Tag::core, at::Tag::pointwise}); } 注册发生在 m....</p>
+  </div>
+  <footer class="entry-footer"><span title='2023-02-11 00:00:00 +0000 UTC'>2023-11-11</span>&nbsp;·&nbsp;1774 字&nbsp;·&nbsp;luokai</footer>
+  <a class="entry-link" aria-label="post link to PyTorch 源码阅读笔记（2）：原生算子注册" href="https://luokai.tech/posts/pytorch_read/operators_register/"></a>
+</article>
+
+<article class="post-entry tag-entry"> 
+  <header class="entry-header">
+    <h2>PyTorch 源码阅读笔记（3）：算子调用<sup><span class="entry-isdraft">&nbsp;&nbsp;[draft]</span></sup>
+    </h2>
+  </header>
+  <div class="entry-content">
+    <p>算子调用过程 所有原生算子均可以在 aten/src/ATen/native/native_functions.yaml 下找到定义：
+- func: add.Tensor(Tensor self, Tensor other, *, Scalar alpha=1) -&gt; Tensor device_check: NoCheck # TensorIterator structured_delegate: add.out variants: function, method dispatch: SparseCPU, SparseCUDA: add_sparse SparseCsrCPU, SparseCsrCUDA: add_sparse_csr MkldnnCPU: mkldnn_add ZeroTensor: add_zerotensor NestedTensorCPU, NestedTensorCUDA: NestedTensor_add_Tensor tags: [canonical, pointwise] 自动脚本会生成如下代码：
+aten/src/ATen/core/TensorBody.h
+inline at::Tensor Tensor::add(const at::Tensor &amp; other, const at::Scalar &amp; alpha) const { return at::_ops::add_Tensor::call(const_cast&lt;Tensor&amp;&gt;(*this), other, alpha); } aten/src/ATen/ops/add_ops.h
+struct TORCH_API add_Tensor { using schema = at::Tensor (const at::Tensor &amp;, const at::Tensor &amp;, const at::Scalar &amp;); using ptr_schema = schema*; // See Note [static constexpr char* members for windows NVCC] STATIC_CONSTEXPR_STR_INL_EXCEPT_WIN_CUDA(name, &#34;aten::add&#34;) STATIC_CONSTEXPR_STR_INL_EXCEPT_WIN_CUDA(overload_name, &#34;Tensor&#34;) STATIC_CONSTEXPR_STR_INL_EXCEPT_WIN_CUDA(schema_str, &#34;add....</p>
+  </div>
+  <footer class="entry-footer"><span title='2023-02-11 00:00:00 +0000 UTC'>2023-11-11</span>&nbsp;·&nbsp;548 字&nbsp;·&nbsp;luokai</footer>
+  <a class="entry-link" aria-label="post link to PyTorch 源码阅读笔记（3）：算子调用" href="https://luokai.tech/posts/pytorch_read/operators_call/"></a>
+</article>
+
+<article class="post-entry tag-entry"> 
+  <header class="entry-header">
+    <h2>PyTorch 源码阅读笔记（4）：自动微分张量库<sup><span class="entry-isdraft">&nbsp;&nbsp;[draft]</span></sup>
+    </h2>
+  </header>
+  <div class="entry-content">
+    <p>自动微分张量库是 PyTorch 的重要功能，本篇从整体流程的角度看一下相关实现。
+——————
+API 自动微分 C&#43;&#43; api 示例如下:
+#include &lt;torch/torch.h&gt; #include &lt;iostream&gt; int main() { auto x = torch::ones({2, 2}, torch::dtype(torch::kFloat32).device(torch::kCUDA, 0).requires_grad(true)); auto y = x * 2; auto out = y.sum(); out.backward(); std::cout &lt;&lt; x.grad() &lt;&lt; std::endl; } 张量存储 张量接口定义可以在 aten/src/ATen/core/TensorBody.h 看到，Tensor 类含有大量自动生成的代码，可以进行算子调用。
+Tensor 类继承自 TensorBase 类，张量相关的大量函数调用自父类 TensorBase ，TensorBase 类有一个关键的成员变量：
+protected: c10::intrusive_ptr&lt;TensorImpl, UndefinedTensorImpl&gt; impl_; TensorImpl 类为张量的底层表示，包含了实际的数据指针和用以描述张量的元数据，它继承自 c10::intrusive_ptr_target，intrusive_ptr_target 是 c10 模块的侵入式指针模块。
+PyTorch 实现了一个侵入式指针来替代 C&#43;&#43; 的 shared_ptr，shared_ptr 使用时需要创建单独的对象进行引用计数，而侵入式指针在使用的类中进行引用计数，所以侵入式指针具有更好的性能。
+使用侵入式指针的类都需要实现引用计数的函数，在这里则是都需要继承 c10::intrusive_ptr_target 类，intrusive_ptr_target 有如下两个成员变量，refcount_ 记录引用计数，weakcount_ 记录弱引用计数，弱引用计数可以处理循环引用的问题：...</p>
+  </div>
+  <footer class="entry-footer"><span title='2023-02-11 00:00:00 +0000 UTC'>2023-11-11</span>&nbsp;·&nbsp;587 字&nbsp;·&nbsp;luokai</footer>
+  <a class="entry-link" aria-label="post link to PyTorch 源码阅读笔记（4）：自动微分张量库" href="https://luokai.tech/posts/pytorch_read/autograd/"></a>
 </article>
 
 <article class="post-entry tag-entry"> 
@@ -190,56 +240,6 @@ class MyCell(torch.nn.Module): def __init__(self): super(MyCell, self).__init__(
   </div>
   <footer class="entry-footer"><span title='2023-02-11 00:00:00 +0000 UTC'>2023-11-11</span>&nbsp;·&nbsp;110 字&nbsp;·&nbsp;luokai</footer>
   <a class="entry-link" aria-label="post link to torchscript" href="https://luokai.tech/posts/pytorch_read/torchscript/"></a>
-</article>
-
-<article class="post-entry tag-entry"> 
-  <header class="entry-header">
-    <h2>算子调用<sup><span class="entry-isdraft">&nbsp;&nbsp;[draft]</span></sup>
-    </h2>
-  </header>
-  <div class="entry-content">
-    <p>算子调用过程 所有原生算子均可以在 aten/src/ATen/native/native_functions.yaml 下找到定义：
-- func: add.Tensor(Tensor self, Tensor other, *, Scalar alpha=1) -&gt; Tensor device_check: NoCheck # TensorIterator structured_delegate: add.out variants: function, method dispatch: SparseCPU, SparseCUDA: add_sparse SparseCsrCPU, SparseCsrCUDA: add_sparse_csr MkldnnCPU: mkldnn_add ZeroTensor: add_zerotensor NestedTensorCPU, NestedTensorCUDA: NestedTensor_add_Tensor tags: [canonical, pointwise] 自动脚本会生成如下代码：
-aten/src/ATen/core/TensorBody.h
-inline at::Tensor Tensor::add(const at::Tensor &amp; other, const at::Scalar &amp; alpha) const { return at::_ops::add_Tensor::call(const_cast&lt;Tensor&amp;&gt;(*this), other, alpha); } aten/src/ATen/ops/add_ops.h
-struct TORCH_API add_Tensor { using schema = at::Tensor (const at::Tensor &amp;, const at::Tensor &amp;, const at::Scalar &amp;); using ptr_schema = schema*; // See Note [static constexpr char* members for windows NVCC] STATIC_CONSTEXPR_STR_INL_EXCEPT_WIN_CUDA(name, &#34;aten::add&#34;) STATIC_CONSTEXPR_STR_INL_EXCEPT_WIN_CUDA(overload_name, &#34;Tensor&#34;) STATIC_CONSTEXPR_STR_INL_EXCEPT_WIN_CUDA(schema_str, &#34;add....</p>
-  </div>
-  <footer class="entry-footer"><span title='2023-02-11 00:00:00 +0000 UTC'>2023-11-11</span>&nbsp;·&nbsp;548 字&nbsp;·&nbsp;luokai</footer>
-  <a class="entry-link" aria-label="post link to 算子调用" href="https://luokai.tech/posts/pytorch_read/operators_call/"></a>
-</article>
-
-<article class="post-entry tag-entry"> 
-  <header class="entry-header">
-    <h2>原生算子注册<sup><span class="entry-isdraft">&nbsp;&nbsp;[draft]</span></sup>
-    </h2>
-  </header>
-  <div class="entry-content">
-    <p>算子定义 按照官方描述，所有的原生算子（函数）都定义在aten/src/ATen/native/native_functions.yaml文件里面，以一个add算子为例：
-如下原生算子：
-- func: add.Tensor(Tensor self, Tensor other, *, Scalar alpha=1) -&gt; Tensor device_check: NoCheck # TensorIterator structured_delegate: add.out variants: function, method dispatch: SparseCPU, SparseCUDA: add_sparse SparseCsrCPU, SparseCsrCUDA: add_sparse_csr MkldnnCPU: mkldnn_add ZeroTensor: add_zerotensor NestedTensorCPU, NestedTensorCUDA: NestedTensor_add_Tensor tags: [canonical, pointwise] 算子 schema 注册 算子通过如下宏进行 schema 注册： cmake-build-debug-wsl-gcc/aten/src/ATen/RegisterSchema.cpp
-// TORCH_LIBRARY(aten, m) 展开如下 static void TORCH_LIBRARY_init_aten(torch::Library&amp;); static const torch::detail::TorchLibraryInit TORCH_LIBRARY_static_init_aten( torch::Library::DEF, &amp;TORCH_LIBRARY_init_aten, &#34;aten&#34;, c10::nullopt, &#34;_file_name_&#34;, 6); void TORCH_LIBRARY_init_aten(torch::Library&amp; m) { m.def(&#34;add.Tensor(Tensor self, Tensor other, *, Scalar alpha=1) -&gt; Tensor&#34;, {at::Tag::core, at::Tag::pointwise}); } 注册发生在 m....</p>
-  </div>
-  <footer class="entry-footer"><span title='2023-02-11 00:00:00 +0000 UTC'>2023-11-11</span>&nbsp;·&nbsp;1774 字&nbsp;·&nbsp;luokai</footer>
-  <a class="entry-link" aria-label="post link to 原生算子注册" href="https://luokai.tech/posts/pytorch_read/operators_register/"></a>
-</article>
-
-<article class="post-entry tag-entry"> 
-  <header class="entry-header">
-    <h2>自动微分张量库<sup><span class="entry-isdraft">&nbsp;&nbsp;[draft]</span></sup>
-    </h2>
-  </header>
-  <div class="entry-content">
-    <p>自动微分张量库是 PyTorch 的重要功能，本篇从整体流程的角度看一下相关实现。
-——————
-API 自动微分 C&#43;&#43; api 示例如下:
-#include &lt;torch/torch.h&gt; #include &lt;iostream&gt; int main() { auto x = torch::ones({2, 2}, torch::dtype(torch::kFloat32).device(torch::kCUDA, 0).requires_grad(true)); auto y = x * 2; auto out = y.sum(); out.backward(); std::cout &lt;&lt; x.grad() &lt;&lt; std::endl; } 张量存储 张量接口定义可以在 aten/src/ATen/core/TensorBody.h 看到，Tensor 类含有大量自动生成的代码，可以进行算子调用。
-Tensor 类继承自 TensorBase 类，张量相关的大量函数调用自父类 TensorBase ，TensorBase 类有一个关键的成员变量：
-protected: c10::intrusive_ptr&lt;TensorImpl, UndefinedTensorImpl&gt; impl_; TensorImpl 类为张量的底层表示，包含了实际的数据指针和用以描述张量的元数据，它继承自 c10::intrusive_ptr_target，intrusive_ptr_target 是 c10 模块的侵入式指针模块。
-PyTorch 实现了一个侵入式指针来替代 C&#43;&#43; 的 shared_ptr，shared_ptr 使用时需要创建单独的对象进行引用计数，而侵入式指针在使用的类中进行引用计数，所以侵入式指针具有更好的性能。
-使用侵入式指针的类都需要实现引用计数的函数，在这里则是都需要继承 c10::intrusive_ptr_target 类，intrusive_ptr_target 有如下两个成员变量，refcount_ 记录引用计数，weakcount_ 记录弱引用计数，弱引用计数可以处理循环引用的问题：...</p>
-  </div>
-  <footer class="entry-footer"><span title='2023-02-11 00:00:00 +0000 UTC'>2023-11-11</span>&nbsp;·&nbsp;587 字&nbsp;·&nbsp;luokai</footer>
-  <a class="entry-link" aria-label="post link to 自动微分张量库" href="https://luokai.tech/posts/pytorch_read/autograd/"></a>
 </article>
     </main>
     

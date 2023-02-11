@@ -20,34 +20,34 @@
     <loc>https://luokai.tech/posts/</loc>
     <lastmod>2023-02-11T11:05:08+08:00</lastmod>
   </url><url>
-    <loc>https://luokai.tech/categories/pytorch-%E6%BA%90%E7%A0%81%E9%98%85%E8%AF%BB%E7%AC%94%E8%AE%B0/</loc>
-    <lastmod>2023-02-11T11:05:08+08:00</lastmod>
-  </url><url>
-    <loc>https://luokai.tech/posts/pytorch_read/build/</loc>
-    <lastmod>2023-02-11T11:05:08+08:00</lastmod>
-  </url><url>
     <loc>https://luokai.tech/categories/%E7%8E%AF%E5%A2%83%E9%85%8D%E7%BD%AE/</loc>
     <lastmod>2023-02-11T11:05:08+08:00</lastmod>
+  </url><url>
+    <loc>https://luokai.tech/tags/pytorch/</loc>
+    <lastmod>2023-02-11T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>https://luokai.tech/categories/pytorch-%E6%BA%90%E7%A0%81%E9%98%85%E8%AF%BB%E7%AC%94%E8%AE%B0/</loc>
+    <lastmod>2023-02-11T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>https://luokai.tech/posts/pytorch_read/build/</loc>
+    <lastmod>2023-02-11T00:00:00+00:00</lastmod>
   </url><url>
     <loc>https://luokai.tech/posts/pytorch_read/dispatcher/</loc>
     <lastmod>2023-02-11T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>https://luokai.tech/tags/pytorch/</loc>
+    <loc>https://luokai.tech/posts/pytorch_read/operators_register/</loc>
+    <lastmod>2023-02-11T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>https://luokai.tech/posts/pytorch_read/operators_call/</loc>
+    <lastmod>2023-02-11T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>https://luokai.tech/posts/pytorch_read/autograd/</loc>
     <lastmod>2023-02-11T00:00:00+00:00</lastmod>
   </url><url>
     <loc>https://luokai.tech/tags/</loc>
     <lastmod>2023-02-11T00:00:00+00:00</lastmod>
   </url><url>
     <loc>https://luokai.tech/posts/pytorch_read/torchscript/</loc>
-    <lastmod>2023-02-11T00:00:00+00:00</lastmod>
-  </url><url>
-    <loc>https://luokai.tech/posts/pytorch_read/operators_call/</loc>
-    <lastmod>2023-02-11T00:00:00+00:00</lastmod>
-  </url><url>
-    <loc>https://luokai.tech/posts/pytorch_read/operators_register/</loc>
-    <lastmod>2023-02-11T00:00:00+00:00</lastmod>
-  </url><url>
-    <loc>https://luokai.tech/posts/pytorch_read/autograd/</loc>
     <lastmod>2023-02-11T00:00:00+00:00</lastmod>
   </url><url>
     <loc>https://luokai.tech/tags/cnn/</loc>
