@@ -27,7 +27,7 @@
       <pubDate>Sat, 11 Feb 2023 00:00:00 +0000</pubDate>
       
       <guid>https://luokai.tech/posts/pytorch_read/operators_register/</guid>
-      <description>代码结构与编译</description>
+      <description>原生算子注册</description>
     </item>
     
     <item>

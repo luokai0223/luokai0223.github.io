@@ -210,9 +210,9 @@ c10 - Core library —— 核心库，包含最基本的功能，aten/src/ATen/c
     <p>什么是dispatcher 关于 PyTorch 的 dispatcher，PyTorch 的核心作者之一 Edward Z Yang 有过介绍：Let’s talk about the PyTorch dispatcher
 PyTorch 作为多平台的神经网络框架，需要实现这样一种功能：每个通用的算子都要实现一些相同的 api，比如前传和反传，这些相同的api在不同的硬件设备会有不同的代码实现，CPU下可能要用到MKL，GPU下是CUDA，各个厂商的NPU加速卡也可能有不同的底层代码。PyTorch 需要根据不同的硬件设备和使用场景，调用对应的函数实现，dispatcher 能够实现这个功能。
 对于每个operator，dispatcher都会维护一个函数指针表，为每个dispatch key提供对应的实现。
-dispatcher 类 class TORCH_API Dispatcher final { // 嵌套结构体 struct OperatorDef final { explicit OperatorDef(OperatorName&amp;&amp; op_name) : op(std::move(op_name)) {} impl::OperatorEntry op; size_t def_count = 0; size_t def_and_impl_count = 0; }; // 成员函数 C10_ALWAYS_INLINE static Dispatcher&amp; singleton() { // ... static Dispatcher&amp; s = realSingleton(); /* 全局单例 C10_EXPORT Dispatcher&amp; Dispatcher::realSingleton() { static Dispatcher _singleton; return _singleton; } */ return s; } // 成员变量 LeftRight&lt;ska::flat_hash_map&lt;OperatorName, OperatorHandle&gt;&gt; operatorLookupTable_; /* operatorLookupTable_是一个算子表 LeftRight 实现参考：[Brief Announcement: Left-Right - A Concurrency Control Technique with Wait-Free Population Oblivious Reads](https://hal....</p>
+Dispatcher class TORCH_API Dispatcher final { // 嵌套结构体 struct OperatorDef final { explicit OperatorDef(OperatorName&amp;&amp; op_name) : op(std::move(op_name)) {} impl::OperatorEntry op; size_t def_count = 0; size_t def_and_impl_count = 0; }; // 成员函数 C10_ALWAYS_INLINE static Dispatcher&amp; singleton() { // ... static Dispatcher&amp; s = realSingleton(); /* 全局单例 C10_EXPORT Dispatcher&amp; Dispatcher::realSingleton() { static Dispatcher _singleton; return _singleton; } */ return s; } // 成员变量 LeftRight&lt;ska::flat_hash_map&lt;OperatorName, OperatorHandle&gt;&gt; operatorLookupTable_; std::list&lt;OperatorDef&gt; operators_; } operatorLookupTable_ 是一个算子表 LeftRight 实现参考：Brief Announcement: Left-Right - A Concurrency Control Technique with Wait-Free Population Oblivious Reads，大概逻辑是给任意的数据结构生成两份实例左和右，同时存在读写的时候，读左边的写右边的，写入完成后读取换到右边，当左边的所有读结束后，右边的写入再同步到左边，这种并发控制方式实现了零等待的读操作。...</p>
   </div>
-  <footer class="entry-footer"><span title='2023-02-11 00:00:00 +0000 UTC'>2023-11-11</span>&nbsp;·&nbsp;475 字&nbsp;·&nbsp;luokai</footer>
+  <footer class="entry-footer"><span title='2023-02-11 00:00:00 +0000 UTC'>2023-11-11</span>&nbsp;·&nbsp;429 字&nbsp;·&nbsp;luokai</footer>
   <a class="entry-link" aria-label="post link to PyTorch 源码阅读笔记（1）：dispatcher" href="https://luokai.tech/posts/pytorch_read/dispatcher/"></a>
 </article>
 
@@ -224,10 +224,10 @@ dispatcher 类 class TORCH_API Dispatcher final { // 嵌套结构体 struct Oper
   <div class="entry-content">
     <p>算子定义 按照官方描述，所有的原生算子（函数）都定义在aten/src/ATen/native/native_functions.yaml文件里面，以一个add算子为例：
 如下原生算子：
-- func: add.Tensor(Tensor self, Tensor other, *, Scalar alpha=1) -&gt; Tensor device_check: NoCheck # TensorIterator structured_delegate: add.out variants: function, method dispatch: SparseCPU, SparseCUDA: add_sparse SparseCsrCPU, SparseCsrCUDA: add_sparse_csr MkldnnCPU: mkldnn_add ZeroTensor: add_zerotensor NestedTensorCPU, NestedTensorCUDA: NestedTensor_add_Tensor tags: [canonical, pointwise] 算子 schema 注册 算子通过如下宏进行 schema 注册： cmake-build-debug-wsl-gcc/aten/src/ATen/RegisterSchema.cpp
-// TORCH_LIBRARY(aten, m) 展开如下 static void TORCH_LIBRARY_init_aten(torch::Library&amp;); static const torch::detail::TorchLibraryInit TORCH_LIBRARY_static_init_aten( torch::Library::DEF, &amp;TORCH_LIBRARY_init_aten, &#34;aten&#34;, c10::nullopt, &#34;_file_name_&#34;, 6); void TORCH_LIBRARY_init_aten(torch::Library&amp; m) { m.def(&#34;add.Tensor(Tensor self, Tensor other, *, Scalar alpha=1) -&gt; Tensor&#34;, {at::Tag::core, at::Tag::pointwise}); } 注册发生在 m....</p>
+- func: add.Tensor(Tensor self, Tensor other, *, Scalar alpha=1) -&gt; Tensor device_check: NoCheck # TensorIterator structured_delegate: add.out variants: function, method dispatch: SparseCPU, SparseCUDA: add_sparse SparseCsrCPU, SparseCsrCUDA: add_sparse_csr MkldnnCPU: mkldnn_add ZeroTensor: add_zerotensor NestedTensorCPU, NestedTensorCUDA: NestedTensor_add_Tensor tags: [canonical, pointwise] 算子信息注册 算子通过如下宏进行 schema 注册：
+// 文件自动生成在 cmake-build-debug-wsl-gcc/aten/src/ATen/RegisterSchema.cpp // TORCH_LIBRARY(aten, m) 展开如下 static void TORCH_LIBRARY_init_aten(torch::Library&amp;); static const torch::detail::TorchLibraryInit TORCH_LIBRARY_static_init_aten( torch::Library::DEF, &amp;TORCH_LIBRARY_init_aten, &#34;aten&#34;, c10::nullopt, &#34;_file_name_&#34;, 6); void TORCH_LIBRARY_init_aten(torch::Library&amp; m) { m.def(&#34;add.Tensor(Tensor self, Tensor other, *, Scalar alpha=1) -&gt; Tensor&#34;, {at::Tag::core, at::Tag::pointwise}); } 注册发生在 m....</p>
   </div>
-  <footer class="entry-footer"><span title='2023-02-11 00:00:00 +0000 UTC'>2023-11-11</span>&nbsp;·&nbsp;1774 字&nbsp;·&nbsp;luokai</footer>
+  <footer class="entry-footer"><span title='2023-02-11 00:00:00 +0000 UTC'>2023-11-11</span>&nbsp;·&nbsp;1793 字&nbsp;·&nbsp;luokai</footer>
   <a class="entry-link" aria-label="post link to PyTorch 源码阅读笔记（2）：原生算子注册" href="https://luokai.tech/posts/pytorch_read/operators_register/"></a>
 </article>
 
