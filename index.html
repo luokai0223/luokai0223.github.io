@@ -175,6 +175,21 @@ if (!doNotTrack) {
 
 <article class="post-entry"> 
   <header class="entry-header">
+    <h2>PyTorch 源码阅读笔记（2）：原生算子注册<sup><span class="entry-isdraft">&nbsp;&nbsp;[draft]</span></sup>
+    </h2>
+  </header>
+  <div class="entry-content">
+    <p>算子定义 按照官方描述，所有的原生算子（函数）都定义在aten/src/ATen/native/native_functions.yaml文件里面，以一个add算子为例：
+如下原生算子：
+- func: add.Tensor(Tensor self, Tensor other, *, Scalar alpha=1) -&gt; Tensor device_check: NoCheck # TensorIterator structured_delegate: add.out variants: function, method dispatch: SparseCPU, SparseCUDA: add_sparse SparseCsrCPU, SparseCsrCUDA: add_sparse_csr MkldnnCPU: mkldnn_add ZeroTensor: add_zerotensor NestedTensorCPU, NestedTensorCUDA: NestedTensor_add_Tensor tags: [canonical, pointwise] 算子信息注册 算子通过如下宏进行 schema 注册：
+// 文件自动生成在 cmake-build-debug-wsl-gcc/aten/src/ATen/RegisterSchema.cpp // TORCH_LIBRARY(aten, m) 展开如下 static void TORCH_LIBRARY_init_aten(torch::Library&amp;); static const torch::detail::TorchLibraryInit TORCH_LIBRARY_static_init_aten( torch::Library::DEF, &amp;TORCH_LIBRARY_init_aten, &#34;aten&#34;, c10::nullopt, &#34;_file_name_&#34;, 6); void TORCH_LIBRARY_init_aten(torch::Library&amp; m) { m.def(&#34;add.Tensor(Tensor self, Tensor other, *, Scalar alpha=1) -&gt; Tensor&#34;, {at::Tag::core, at::Tag::pointwise}); } 注册发生在 m....</p>
+  </div>
+  <footer class="entry-footer"><span title='2023-02-13 00:00:00 +0000 UTC'>2023-13-13</span>&nbsp;·&nbsp;1590 字&nbsp;·&nbsp;luokai</footer>
+  <a class="entry-link" aria-label="post link to PyTorch 源码阅读笔记（2）：原生算子注册" href="https://luokai.tech/posts/pytorch_read/operators_register/"></a>
+</article>
+
+<article class="post-entry"> 
+  <header class="entry-header">
     <h2>A卡机器学习配置与使用
     </h2>
   </header>
@@ -214,21 +229,6 @@ Dispatcher class TORCH_API Dispatcher final { // 嵌套结构体 struct Operator
   </div>
   <footer class="entry-footer"><span title='2023-02-11 00:00:00 +0000 UTC'>2023-11-11</span>&nbsp;·&nbsp;429 字&nbsp;·&nbsp;luokai</footer>
   <a class="entry-link" aria-label="post link to PyTorch 源码阅读笔记（1）：dispatcher" href="https://luokai.tech/posts/pytorch_read/dispatcher/"></a>
-</article>
-
-<article class="post-entry"> 
-  <header class="entry-header">
-    <h2>PyTorch 源码阅读笔记（2）：原生算子注册<sup><span class="entry-isdraft">&nbsp;&nbsp;[draft]</span></sup>
-    </h2>
-  </header>
-  <div class="entry-content">
-    <p>算子定义 按照官方描述，所有的原生算子（函数）都定义在aten/src/ATen/native/native_functions.yaml文件里面，以一个add算子为例：
-如下原生算子：
-- func: add.Tensor(Tensor self, Tensor other, *, Scalar alpha=1) -&gt; Tensor device_check: NoCheck # TensorIterator structured_delegate: add.out variants: function, method dispatch: SparseCPU, SparseCUDA: add_sparse SparseCsrCPU, SparseCsrCUDA: add_sparse_csr MkldnnCPU: mkldnn_add ZeroTensor: add_zerotensor NestedTensorCPU, NestedTensorCUDA: NestedTensor_add_Tensor tags: [canonical, pointwise] 算子信息注册 算子通过如下宏进行 schema 注册：
-// 文件自动生成在 cmake-build-debug-wsl-gcc/aten/src/ATen/RegisterSchema.cpp // TORCH_LIBRARY(aten, m) 展开如下 static void TORCH_LIBRARY_init_aten(torch::Library&amp;); static const torch::detail::TorchLibraryInit TORCH_LIBRARY_static_init_aten( torch::Library::DEF, &amp;TORCH_LIBRARY_init_aten, &#34;aten&#34;, c10::nullopt, &#34;_file_name_&#34;, 6); void TORCH_LIBRARY_init_aten(torch::Library&amp; m) { m.def(&#34;add.Tensor(Tensor self, Tensor other, *, Scalar alpha=1) -&gt; Tensor&#34;, {at::Tag::core, at::Tag::pointwise}); } 注册发生在 m....</p>
-  </div>
-  <footer class="entry-footer"><span title='2023-02-11 00:00:00 +0000 UTC'>2023-11-11</span>&nbsp;·&nbsp;1793 字&nbsp;·&nbsp;luokai</footer>
-  <a class="entry-link" aria-label="post link to PyTorch 源码阅读笔记（2）：原生算子注册" href="https://luokai.tech/posts/pytorch_read/operators_register/"></a>
 </article>
 
 <article class="post-entry"> 
