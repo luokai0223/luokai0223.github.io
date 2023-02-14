@@ -152,7 +152,20 @@ if (!doNotTrack) {
 
 <article class="post-entry tag-entry"> 
   <header class="entry-header">
-    <h2>PyTorch 源码阅读笔记（2）：原生算子注册<sup><span class="entry-isdraft">&nbsp;&nbsp;[draft]</span></sup>
+    <h2>PyTorch 源码阅读笔记（3）：算子调用
+    </h2>
+  </header>
+  <div class="entry-content">
+    <p>算子注册 参考 原生算子注册
+算子调用过程 找到 OperatorHandle // cmake-build-debug-wsl-gcc/aten/src/ATen/core/TensorBody.h inline at::Tensor Tensor::add(const at::Tensor &amp; other, const at::Scalar &amp; alpha) const { return at::_ops::add_Tensor::call(const_cast&lt;Tensor&amp;&gt;(*this), other, alpha); } // cmake-build-debug-wsl-gcc/aten/src/ATen/ops/add_ops.h struct TORCH_API add_Tensor { using schema = at::Tensor (const at::Tensor &amp;, const at::Tensor &amp;, const at::Scalar &amp;); using ptr_schema = schema*; // See Note [static constexpr char* members for windows NVCC] STATIC_CONSTEXPR_STR_INL_EXCEPT_WIN_CUDA(name, &#34;aten::add&#34;) STATIC_CONSTEXPR_STR_INL_EXCEPT_WIN_CUDA(overload_name, &#34;Tensor&#34;) STATIC_CONSTEXPR_STR_INL_EXCEPT_WIN_CUDA(schema_str, &#34;add.Tensor(Tensor self, Tensor other, *, Scalar alpha=1) -&gt; Tensor&#34;) static at::Tensor call(const at::Tensor &amp; self, const at::Tensor &amp; other, const at::Scalar &amp; alpha); static at::Tensor redispatch(c10::DispatchKeySet dispatchKeySet, const at::Tensor &amp; self, const at::Tensor &amp; other, const at::Scalar &amp; alpha); } // cmake-build-debug-wsl-gcc/aten/src/ATen/Operators_2....</p>
+  </div>
+  <footer class="entry-footer"><span title='2023-02-14 00:00:00 +0000 UTC'>2023-14-14</span>&nbsp;·&nbsp;345 字&nbsp;·&nbsp;luokai</footer>
+  <a class="entry-link" aria-label="post link to PyTorch 源码阅读笔记（3）：算子调用" href="https://luokai.tech/posts/pytorch_read/operators_call/"></a>
+</article>
+
+<article class="post-entry tag-entry"> 
+  <header class="entry-header">
+    <h2>PyTorch 源码阅读笔记（2）：原生算子注册
     </h2>
   </header>
   <div class="entry-content">
@@ -180,7 +193,7 @@ c10 - Core library —— 核心库，包含最基本的功能，aten/src/ATen/c
 
 <article class="post-entry tag-entry"> 
   <header class="entry-header">
-    <h2>PyTorch 源码阅读笔记（1）：dispatcher<sup><span class="entry-isdraft">&nbsp;&nbsp;[draft]</span></sup>
+    <h2>PyTorch 源码阅读笔记（1）：dispatcher
     </h2>
   </header>
   <div class="entry-content">
@@ -189,24 +202,8 @@ PyTorch 作为多平台的神经网络框架，需要实现这样一种功能：
 对于每个operator，dispatcher都会维护一个函数指针表，为每个dispatch key提供对应的实现。
 Dispatcher class TORCH_API Dispatcher final { // 嵌套结构体 struct OperatorDef final { explicit OperatorDef(OperatorName&amp;&amp; op_name) : op(std::move(op_name)) {} impl::OperatorEntry op; size_t def_count = 0; size_t def_and_impl_count = 0; }; // 成员函数 C10_ALWAYS_INLINE static Dispatcher&amp; singleton() { // ... static Dispatcher&amp; s = realSingleton(); /* 全局单例 C10_EXPORT Dispatcher&amp; Dispatcher::realSingleton() { static Dispatcher _singleton; return _singleton; } */ return s; } // 成员变量 LeftRight&lt;ska::flat_hash_map&lt;OperatorName, OperatorHandle&gt;&gt; operatorLookupTable_; std::list&lt;OperatorDef&gt; operators_; } operatorLookupTable_ 是一个算子表 LeftRight 实现参考：Brief Announcement: Left-Right - A Concurrency Control Technique with Wait-Free Population Oblivious Reads，大概逻辑是给任意的数据结构生成两份实例左和右，同时存在读写的时候，读左边的写右边的，写入完成后读取换到右边，当左边的所有读结束后，右边的写入再同步到左边，这种并发控制方式实现了零等待的读操作。...</p>
   </div>
-  <footer class="entry-footer"><span title='2023-02-11 00:00:00 +0000 UTC'>2023-11-11</span>&nbsp;·&nbsp;429 字&nbsp;·&nbsp;luokai</footer>
+  <footer class="entry-footer"><span title='2023-02-11 00:00:00 +0000 UTC'>2023-11-11</span>&nbsp;·&nbsp;692 字&nbsp;·&nbsp;luokai</footer>
   <a class="entry-link" aria-label="post link to PyTorch 源码阅读笔记（1）：dispatcher" href="https://luokai.tech/posts/pytorch_read/dispatcher/"></a>
-</article>
-
-<article class="post-entry tag-entry"> 
-  <header class="entry-header">
-    <h2>PyTorch 源码阅读笔记（3）：算子调用<sup><span class="entry-isdraft">&nbsp;&nbsp;[draft]</span></sup>
-    </h2>
-  </header>
-  <div class="entry-content">
-    <p>算子调用过程 所有原生算子均可以在 aten/src/ATen/native/native_functions.yaml 下找到定义：
-- func: add.Tensor(Tensor self, Tensor other, *, Scalar alpha=1) -&gt; Tensor device_check: NoCheck # TensorIterator structured_delegate: add.out variants: function, method dispatch: SparseCPU, SparseCUDA: add_sparse SparseCsrCPU, SparseCsrCUDA: add_sparse_csr MkldnnCPU: mkldnn_add ZeroTensor: add_zerotensor NestedTensorCPU, NestedTensorCUDA: NestedTensor_add_Tensor tags: [canonical, pointwise] 自动脚本会生成如下代码：
-aten/src/ATen/core/TensorBody.h
-inline at::Tensor Tensor::add(const at::Tensor &amp; other, const at::Scalar &amp; alpha) const { return at::_ops::add_Tensor::call(const_cast&lt;Tensor&amp;&gt;(*this), other, alpha); } aten/src/ATen/ops/add_ops.h
-struct TORCH_API add_Tensor { using schema = at::Tensor (const at::Tensor &amp;, const at::Tensor &amp;, const at::Scalar &amp;); using ptr_schema = schema*; // See Note [static constexpr char* members for windows NVCC] STATIC_CONSTEXPR_STR_INL_EXCEPT_WIN_CUDA(name, &#34;aten::add&#34;) STATIC_CONSTEXPR_STR_INL_EXCEPT_WIN_CUDA(overload_name, &#34;Tensor&#34;) STATIC_CONSTEXPR_STR_INL_EXCEPT_WIN_CUDA(schema_str, &#34;add....</p>
-  </div>
-  <footer class="entry-footer"><span title='2023-02-11 00:00:00 +0000 UTC'>2023-11-11</span>&nbsp;·&nbsp;548 字&nbsp;·&nbsp;luokai</footer>
-  <a class="entry-link" aria-label="post link to PyTorch 源码阅读笔记（3）：算子调用" href="https://luokai.tech/posts/pytorch_read/operators_call/"></a>
 </article>
 
 <article class="post-entry tag-entry"> 
