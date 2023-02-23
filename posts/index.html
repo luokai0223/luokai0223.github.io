@@ -167,6 +167,40 @@ if (!doNotTrack) {
 
 <article class="post-entry"> 
   <header class="entry-header">
+    <h2>PyTorch 源码阅读笔记（5）：TorchScript
+    </h2>
+  </header>
+  <div class="entry-content">
+    <p>TorchScript 的使用 python api:
+class MyCell(torch.nn.Module): def __init__(self): super(MyCell, self).__init__() self.linear = torch.nn.Linear(4, 4) def forward(self, x, h): new_h = torch.tanh(self.linear(x) &#43; h) return new_h, new_h scripted_module = torch.jit.script(MyCell().eval()) C&#43;&#43; api:
+#include &lt;torch/script.h&gt; // One-stop header. #include &lt;iostream&gt; #include &lt;memory&gt; int main(int argc, const char* argv[]) { if (argc != 2) { std::cerr &lt;&lt; &#34;usage: example-app &lt;path-to-exported-script-module&gt;\n&#34;; return -1; } torch::jit::script::Module module; try { // Deserialize the ScriptModule from a file using torch::jit::load()....</p>
+  </div>
+  <footer class="entry-footer"><span title='2023-02-23 00:00:00 +0000 UTC'>2023-23-23</span>&nbsp;·&nbsp;164 字&nbsp;·&nbsp;luokai</footer>
+  <a class="entry-link" aria-label="post link to PyTorch 源码阅读笔记（5）：TorchScript" href="https://luokai.tech/posts/pytorch_read/torchscript/"></a>
+</article>
+
+<article class="post-entry"> 
+  <header class="entry-header">
+    <h2>PyTorch 源码阅读笔记（4）：自动微分张量库
+    </h2>
+  </header>
+  <div class="entry-content">
+    <p>张量库 张量接口定义可以在 aten/src/ATen/core/TensorBody.h 看到，Tensor 类含有大量自动生成的代码，可以进行算子调用。
+Tensor 类继承自 TensorBase 类，张量相关的大量函数调用自父类 TensorBase ，TensorBase 类有一个关键的成员变量：
+protected: c10::intrusive_ptr&lt;TensorImpl, UndefinedTensorImpl&gt; impl_; TensorImpl 类为张量的底层表示，包含了实际的数据指针和用以描述张量的元数据，它继承自 c10::intrusive_ptr_target，intrusive_ptr_target 是 c10 模块的侵入式指针模块。
+PyTorch 实现了一个侵入式指针来替代 C&#43;&#43; 的 shared_ptr，shared_ptr 使用时需要创建单独的对象进行引用计数，而侵入式指针在使用的类中进行引用计数，所以侵入式指针具有更好的性能。
+使用侵入式指针的类都需要实现引用计数的函数，在这里则是都需要继承 c10::intrusive_ptr_target 类，intrusive_ptr_target 有如下两个成员变量，refcount_ 记录引用计数，weakcount_ 记录弱引用计数，弱引用计数可以处理循环引用的问题：
+mutable std::atomic&lt;size_t&gt; refcount_; mutable std::atomic&lt;size_t&gt; weakcount_; TensorImpl 有一个 Storage 类的成员变量，Storage 有如下成员变量：
+protected: c10::intrusive_ptr&lt;StorageImpl&gt; storage_impl_; StorageImpl 继承了 c10::intrusive_ptr_target, 是实质上的底层数据类，保存了原始数据指针，对于 Storage 类的设计官方备注是继承自原始的 Torch7 项目，倾向于去掉此模块的设计，但是比较麻烦没人有空做。
+Variable 与 Tensor 在较新版本的 PyTorch 中，Variable 与 Tensor 进行了合并，有如下的命名空间定义，不过没有完全去掉 Variable 相关的 api：
+using torch::autograd::Variable = at::Tensor 自动微分 反向传播 api backward 函数的调用会进行反向传播：...</p>
+  </div>
+  <footer class="entry-footer"><span title='2023-02-17 00:00:00 +0000 UTC'>2023-17-17</span>&nbsp;·&nbsp;647 字&nbsp;·&nbsp;luokai</footer>
+  <a class="entry-link" aria-label="post link to PyTorch 源码阅读笔记（4）：自动微分张量库" href="https://luokai.tech/posts/pytorch_read/autograd/"></a>
+</article>
+
+<article class="post-entry"> 
+  <header class="entry-header">
     <h2>PyTorch 源码阅读笔记（3）：算子调用
     </h2>
   </header>
@@ -234,39 +268,6 @@ Dispatcher class TORCH_API Dispatcher final { // 嵌套结构体 struct Operator
   </div>
   <footer class="entry-footer"><span title='2023-02-11 00:00:00 +0000 UTC'>2023-11-11</span>&nbsp;·&nbsp;692 字&nbsp;·&nbsp;luokai</footer>
   <a class="entry-link" aria-label="post link to PyTorch 源码阅读笔记（1）：dispatcher" href="https://luokai.tech/posts/pytorch_read/dispatcher/"></a>
-</article>
-
-<article class="post-entry"> 
-  <header class="entry-header">
-    <h2>PyTorch 源码阅读笔记（4）：自动微分张量库<sup><span class="entry-isdraft">&nbsp;&nbsp;[draft]</span></sup>
-    </h2>
-  </header>
-  <div class="entry-content">
-    <p>自动微分张量库是 PyTorch 的重要功能，本篇从整体流程的角度看一下相关实现。
-——————
-API 自动微分 C&#43;&#43; api 示例如下:
-#include &lt;torch/torch.h&gt; #include &lt;iostream&gt; int main() { auto x = torch::ones({2, 2}, torch::dtype(torch::kFloat32).device(torch::kCUDA, 0).requires_grad(true)); auto y = x * 2; auto out = y.sum(); out.backward(); std::cout &lt;&lt; x.grad() &lt;&lt; std::endl; } 张量存储 张量接口定义可以在 aten/src/ATen/core/TensorBody.h 看到，Tensor 类含有大量自动生成的代码，可以进行算子调用。
-Tensor 类继承自 TensorBase 类，张量相关的大量函数调用自父类 TensorBase ，TensorBase 类有一个关键的成员变量：
-protected: c10::intrusive_ptr&lt;TensorImpl, UndefinedTensorImpl&gt; impl_; TensorImpl 类为张量的底层表示，包含了实际的数据指针和用以描述张量的元数据，它继承自 c10::intrusive_ptr_target，intrusive_ptr_target 是 c10 模块的侵入式指针模块。
-PyTorch 实现了一个侵入式指针来替代 C&#43;&#43; 的 shared_ptr，shared_ptr 使用时需要创建单独的对象进行引用计数，而侵入式指针在使用的类中进行引用计数，所以侵入式指针具有更好的性能。
-使用侵入式指针的类都需要实现引用计数的函数，在这里则是都需要继承 c10::intrusive_ptr_target 类，intrusive_ptr_target 有如下两个成员变量，refcount_ 记录引用计数，weakcount_ 记录弱引用计数，弱引用计数可以处理循环引用的问题：...</p>
-  </div>
-  <footer class="entry-footer"><span title='2023-02-11 00:00:00 +0000 UTC'>2023-11-11</span>&nbsp;·&nbsp;587 字&nbsp;·&nbsp;luokai</footer>
-  <a class="entry-link" aria-label="post link to PyTorch 源码阅读笔记（4）：自动微分张量库" href="https://luokai.tech/posts/pytorch_read/autograd/"></a>
-</article>
-
-<article class="post-entry"> 
-  <header class="entry-header">
-    <h2>torchscript<sup><span class="entry-isdraft">&nbsp;&nbsp;[draft]</span></sup>
-    </h2>
-  </header>
-  <div class="entry-content">
-    <p>TorchScript 的使用 python api:
-class MyCell(torch.nn.Module): def __init__(self): super(MyCell, self).__init__() self.linear = torch.nn.Linear(4, 4) def forward(self, x, h): new_h = torch.tanh(self.linear(x) &#43; h) return new_h, new_h my_cell = MyCell() x, h = torch.rand(3, 4), torch.rand(3, 4) traced_cell = torch.jit.trace(my_cell, (x, h)) print(traced_cell) traced_cell(x, h) C&#43;&#43; api:
-#include &lt;torch/script.h&gt; // One-stop header. #include &lt;iostream&gt; #include &lt;memory&gt; int main(int argc, const char* argv[]) { if (argc != 2) { std::cerr &lt;&lt; &#34;usage: example-app &lt;path-to-exported-script-module&gt;\n&#34;; return -1; } torch::jit::script::Module module; try { // Deserialize the ScriptModule from a file using torch::jit::load()....</p>
-  </div>
-  <footer class="entry-footer"><span title='2023-02-11 00:00:00 +0000 UTC'>2023-11-11</span>&nbsp;·&nbsp;110 字&nbsp;·&nbsp;luokai</footer>
-  <a class="entry-link" aria-label="post link to torchscript" href="https://luokai.tech/posts/pytorch_read/torchscript/"></a>
 </article>
 
 <article class="post-entry"> 

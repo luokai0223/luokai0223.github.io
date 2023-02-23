@@ -5,9 +5,9 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <meta name="robots" content="index, follow">
-<title>torchscript | K&#39;s blog</title>
+<title>PyTorch 源码阅读笔记（5）：TorchScript | K&#39;s blog</title>
 <meta name="keywords" content="PyTorch">
-<meta name="description" content="torchscript">
+<meta name="description" content="TorchScript">
 <meta name="author" content="luokai">
 <link rel="canonical" href="https://luokai.tech/posts/pytorch_read/torchscript/">
 <link crossorigin="anonymous" href="/assets/css/stylesheet.938a2ae405ffe5d9d39bf4fcbd809c6c18f56332c2c71b483718db4b263d5c97.css" integrity="sha256-k4oq5AX/5dnTm/T8vYCcbBj1YzLCxxtINxjbSyY9XJc=" rel="preload stylesheet" as="style">
@@ -68,18 +68,18 @@ if (!doNotTrack) {
 	
 	ga('send', 'pageview');
 }
-</script><meta property="og:title" content="torchscript" />
-<meta property="og:description" content="torchscript" />
+</script><meta property="og:title" content="PyTorch 源码阅读笔记（5）：TorchScript" />
+<meta property="og:description" content="TorchScript" />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://luokai.tech/posts/pytorch_read/torchscript/" /><meta property="og:image" content="https://luokai.tech/%3Clink%20or%20path%20of%20image%20for%20opengraph,%20twitter-cards%3E"/><meta property="article:section" content="posts" />
-<meta property="article:published_time" content="2023-02-11T00:00:00+00:00" />
-<meta property="article:modified_time" content="2023-02-11T00:00:00+00:00" /><meta property="og:site_name" content="K&#39;s blog" />
+<meta property="article:published_time" content="2023-02-23T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-02-23T00:00:00+00:00" /><meta property="og:site_name" content="K&#39;s blog" />
 
 <meta name="twitter:card" content="summary_large_image"/>
 <meta name="twitter:image" content="https://luokai.tech/%3Clink%20or%20path%20of%20image%20for%20opengraph,%20twitter-cards%3E"/>
 
-<meta name="twitter:title" content="torchscript"/>
-<meta name="twitter:description" content="torchscript"/>
+<meta name="twitter:title" content="PyTorch 源码阅读笔记（5）：TorchScript"/>
+<meta name="twitter:description" content="TorchScript"/>
 
 
 <script type="application/ld+json">
@@ -96,7 +96,7 @@ if (!doNotTrack) {
     {
       "@type": "ListItem",
       "position":  2 ,
-      "name": "torchscript",
+      "name": "PyTorch 源码阅读笔记（5）：TorchScript",
       "item": "https://luokai.tech/posts/pytorch_read/torchscript/"
     }
   ]
@@ -106,17 +106,17 @@ if (!doNotTrack) {
 {
   "@context": "https://schema.org",
   "@type": "BlogPosting",
-  "headline": "torchscript",
-  "name": "torchscript",
-  "description": "torchscript",
+  "headline": "PyTorch 源码阅读笔记（5）：TorchScript",
+  "name": "PyTorch 源码阅读笔记（5）：TorchScript",
+  "description": "TorchScript",
   "keywords": [
     "PyTorch"
   ],
-  "articleBody": "TorchScript 的使用 python api:\nclass MyCell(torch.nn.Module): def __init__(self): super(MyCell, self).__init__() self.linear = torch.nn.Linear(4, 4) def forward(self, x, h): new_h = torch.tanh(self.linear(x) + h) return new_h, new_h my_cell = MyCell() x, h = torch.rand(3, 4), torch.rand(3, 4) traced_cell = torch.jit.trace(my_cell, (x, h)) print(traced_cell) traced_cell(x, h) C++ api:\n#include // One-stop header. #include #include int main(int argc, const char* argv[]) { if (argc != 2) { std::cerr \u003c\u003c \"usage: example-app \\n\"; return -1; } torch::jit::script::Module module; try { // Deserialize the ScriptModule from a file using torch::jit::load(). module = torch::jit::load(argv[1]); } catch (const c10::Error\u0026 e) { std::cerr \u003c\u003c \"error loading the model\\n\"; return -1; } std::cout \u003c\u003c \"ok\\n\"; } ",
-  "wordCount" : "110",
+  "articleBody": "TorchScript 的使用 python api:\nclass MyCell(torch.nn.Module): def __init__(self): super(MyCell, self).__init__() self.linear = torch.nn.Linear(4, 4) def forward(self, x, h): new_h = torch.tanh(self.linear(x) + h) return new_h, new_h scripted_module = torch.jit.script(MyCell().eval()) C++ api:\n#include // One-stop header. #include #include int main(int argc, const char* argv[]) { if (argc != 2) { std::cerr \u003c\u003c \"usage: example-app \\n\"; return -1; } torch::jit::script::Module module; try { // Deserialize the ScriptModule from a file using torch::jit::load(). module = torch::jit::load(argv[1]); } catch (const c10::Error\u0026 e) { std::cerr \u003c\u003c \"error loading the model\\n\"; return -1; } std::cout \u003c\u003c \"ok\\n\"; // Create a vector of inputs. std::vector\u003ctorch::jit::IValue\u003e inputs; inputs.push_back(torch::ones({1, 3, 224, 224})); // Execute the model and turn its output into a tensor. at::Tensor output = module.forward(inputs).toTensor(); std::cout \u003c\u003c output.slice(/*dim=*/1, /*start=*/0, /*end=*/5) \u003c\u003c '\\n'; } 关于 TorchScript 细节参考：TorchScript\nTorchScript 实现的功能，从使用角度看是用 Python 编写模型，然后在 C++ 内运行，大致有如下步骤：\n解析 Python 代码为抽象语法树 转化语法树为模型中间表示 IR 根据 IR 生成模型 执行模型（根据运行时信息优化模型-JIT） 从流程上看，PyTorch 在 C++ 端（LibTorch）实现了一个编译器，编译运行了一个 Python 的子集语言，即为 TorchScript：\n1 ~ 3为编译器的前端（语法分析、类型检查、中间代码生成），4为编译器后端（代码优化、执行代码生成与优化）\nmore 使用角度看，TorchScript 适用于生产部署 PyTorch 模型，不过实际工作中没有直接使用过，一般训练完成以后会选择导出 onnx，openvino等格式（导出过程其实使用了相关模块），单独部署为推理服务 原理涉及较多编译原理相关内容，学习后再补充 ",
+  "wordCount" : "164",
   "inLanguage": "zh",
-  "datePublished": "2023-02-11T00:00:00Z",
-  "dateModified": "2023-02-11T00:00:00Z",
+  "datePublished": "2023-02-23T00:00:00Z",
+  "dateModified": "2023-02-23T00:00:00Z",
   "author":{
     "@type": "Person",
     "name": "luokai"
@@ -206,12 +206,12 @@ if (!doNotTrack) {
   <header class="post-header">
     <div class="breadcrumbs"><a href="https://luokai.tech/">主页</a>&nbsp;»&nbsp;<a href="https://luokai.tech/posts/">Posts</a></div>
     <h1 class="post-title">
-      torchscript<sup><span class="entry-isdraft">&nbsp;&nbsp;[draft]</span></sup>
+      PyTorch 源码阅读笔记（5）：TorchScript
     </h1>
     <div class="post-description">
-      torchscript
+      TorchScript
     </div>
-    <div class="post-meta"><span title='2023-02-11 00:00:00 +0000 UTC'>2023-11-11</span>&nbsp;·&nbsp;110 字&nbsp;·&nbsp;luokai
+    <div class="post-meta"><span title='2023-02-23 00:00:00 +0000 UTC'>2023-23-23</span>&nbsp;·&nbsp;164 字&nbsp;·&nbsp;luokai
 
 </div>
   </header> <aside id="toc-container" class="toc-container wide">
@@ -223,7 +223,11 @@ if (!doNotTrack) {
 
             <div class="inner"><ul>
                     <li>
-                        <a href="#torchscript-%e7%9a%84%e4%bd%bf%e7%94%a8" aria-label="TorchScript 的使用">TorchScript 的使用</a>
+                        <a href="#torchscript-%e7%9a%84%e4%bd%bf%e7%94%a8" aria-label="TorchScript 的使用">TorchScript 的使用</a></li>
+                    <li>
+                        <a href="#%e5%85%b3%e4%ba%8e-torchscript" aria-label="关于 TorchScript">关于 TorchScript</a></li>
+                    <li>
+                        <a href="#more" aria-label="more">more</a>
                     </li>
                 </ul>
             </div>
@@ -299,16 +303,11 @@ if (!doNotTrack) {
 </span></span><span class="line"><span class="cl">    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">h</span><span class="p">):</span>
 </span></span><span class="line"><span class="cl">        <span class="n">new_h</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tanh</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">linear</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">+</span> <span class="n">h</span><span class="p">)</span>
 </span></span><span class="line"><span class="cl">        <span class="k">return</span> <span class="n">new_h</span><span class="p">,</span> <span class="n">new_h</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="n">my_cell</span> <span class="o">=</span> <span class="n">MyCell</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl"><span class="n">x</span><span class="p">,</span> <span class="n">h</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span> <span class="n">torch</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl"><span class="n">traced_cell</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">jit</span><span class="o">.</span><span class="n">trace</span><span class="p">(</span><span class="n">my_cell</span><span class="p">,</span> <span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">h</span><span class="p">))</span>
-</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="n">traced_cell</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl"><span class="n">traced_cell</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">h</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl"><span class="n">scripted_module</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">jit</span><span class="o">.</span><span class="n">script</span><span class="p">(</span><span class="n">MyCell</span><span class="p">()</span><span class="o">.</span><span class="n">eval</span><span class="p">())</span>
 </span></span></code></pre></div><p>C++ api:</p>
 <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;torch/script.h&gt; // One-stop header.</span><span class="cp">
-</span></span></span><span class="line"><span class="cl"><span class="cp"></span>
-</span></span><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;iostream&gt;</span><span class="cp">
+</span></span></span><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;iostream&gt;</span><span class="cp">
 </span></span></span><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;memory&gt;</span><span class="cp">
 </span></span></span><span class="line"><span class="cl"><span class="cp"></span>
 </span></span><span class="line"><span class="cl"><span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="n">argv</span><span class="p">[])</span> <span class="p">{</span>
@@ -316,8 +315,6 @@ if (!doNotTrack) {
 </span></span><span class="line"><span class="cl">    <span class="n">std</span><span class="o">::</span><span class="n">cerr</span> <span class="o">&lt;&lt;</span> <span class="s">&#34;usage: example-app &lt;path-to-exported-script-module&gt;</span><span class="se">\n</span><span class="s">&#34;</span><span class="p">;</span>
 </span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
 </span></span><span class="line"><span class="cl">  <span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">  <span class="n">torch</span><span class="o">::</span><span class="n">jit</span><span class="o">::</span><span class="n">script</span><span class="o">::</span><span class="n">Module</span> <span class="n">module</span><span class="p">;</span>
 </span></span><span class="line"><span class="cl">  <span class="k">try</span> <span class="p">{</span>
 </span></span><span class="line"><span class="cl">    <span class="c1">// Deserialize the ScriptModule from a file using torch::jit::load().
@@ -327,10 +324,34 @@ if (!doNotTrack) {
 </span></span><span class="line"><span class="cl">    <span class="n">std</span><span class="o">::</span><span class="n">cerr</span> <span class="o">&lt;&lt;</span> <span class="s">&#34;error loading the model</span><span class="se">\n</span><span class="s">&#34;</span><span class="p">;</span>
 </span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
 </span></span><span class="line"><span class="cl">  <span class="p">}</span>
-</span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">  <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&#34;ok</span><span class="se">\n</span><span class="s">&#34;</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">  <span class="c1">// Create a vector of inputs.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>  <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">torch</span><span class="o">::</span><span class="n">jit</span><span class="o">::</span><span class="n">IValue</span><span class="o">&gt;</span> <span class="n">inputs</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">  <span class="n">inputs</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">torch</span><span class="o">::</span><span class="n">ones</span><span class="p">({</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">224</span><span class="p">,</span> <span class="mi">224</span><span class="p">}));</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">  <span class="c1">// Execute the model and turn its output into a tensor.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>  <span class="n">at</span><span class="o">::</span><span class="n">Tensor</span> <span class="n">output</span> <span class="o">=</span> <span class="n">module</span><span class="p">.</span><span class="n">forward</span><span class="p">(</span><span class="n">inputs</span><span class="p">).</span><span class="n">toTensor</span><span class="p">();</span>
+</span></span><span class="line"><span class="cl">  <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">output</span><span class="p">.</span><span class="n">slice</span><span class="p">(</span><span class="cm">/*dim=*/</span><span class="mi">1</span><span class="p">,</span> <span class="cm">/*start=*/</span><span class="mi">0</span><span class="p">,</span> <span class="cm">/*end=*/</span><span class="mi">5</span><span class="p">)</span> <span class="o">&lt;&lt;</span> <span class="sc">&#39;\n&#39;</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></div>
+</span></span></code></pre></div><h2 id="关于-torchscript">关于 TorchScript<a hidden class="anchor" aria-hidden="true" href="#关于-torchscript">#</a></h2>
+<p>细节参考：<a href="https://github.com/pytorch/pytorch/blob/v1.13.1/torch/csrc/jit/OVERVIEW.md">TorchScript</a><br>
+TorchScript 实现的功能，从使用角度看是用 Python 编写模型，然后在 C++ 内运行，大致有如下步骤：</p>
+<ol>
+<li>解析 Python 代码为抽象语法树</li>
+<li>转化语法树为模型中间表示 IR</li>
+<li>根据 IR 生成模型</li>
+<li>执行模型（根据运行时信息优化模型-JIT）</li>
+</ol>
+<p>从流程上看，PyTorch 在 C++ 端（LibTorch）实现了一个编译器，编译运行了一个 Python 的子集语言，即为 TorchScript：<br>
+1 ~ 3为编译器的前端（语法分析、类型检查、中间代码生成），4为编译器后端（代码优化、执行代码生成与优化）</p>
+<h2 id="more">more<a hidden class="anchor" aria-hidden="true" href="#more">#</a></h2>
+<ol>
+<li>使用角度看，TorchScript 适用于生产部署 PyTorch 模型，不过实际工作中没有直接使用过，一般训练完成以后会选择导出 onnx，openvino等格式（导出过程其实使用了相关模块），单独部署为推理服务</li>
+<li>原理涉及较多编译原理相关内容，学习后再补充</li>
+</ol>
+
 
   </div>
 
@@ -339,15 +360,10 @@ if (!doNotTrack) {
       <li><a href="https://luokai.tech/tags/pytorch/">PyTorch</a></li>
     </ul>
 <nav class="paginav">
-  <a class="prev" href="https://luokai.tech/posts/pytorch_read/autograd/">
-    <span class="title">« 上一页</span>
-    <br>
-    <span>PyTorch 源码阅读笔记（4）：自动微分张量库</span>
-  </a>
-  <a class="next" href="https://luokai.tech/posts/paper/occlusion_face/">
+  <a class="next" href="https://luokai.tech/posts/pytorch_read/autograd/">
     <span class="title">下一页 »</span>
     <br>
-    <span>论文阅读笔记：遮挡环境下的面部识别概述</span>
+    <span>PyTorch 源码阅读笔记（4）：自动微分张量库</span>
   </a>
 </nav>
 
