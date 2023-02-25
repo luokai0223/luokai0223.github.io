@@ -49,15 +49,6 @@
     </item>
     
     <item>
-      <title>About</title>
-      <link>https://luokai.tech/about/about/</link>
-      <pubDate>Sat, 11 Feb 2023 11:05:08 +0800</pubDate>
-      
-      <guid>https://luokai.tech/about/about/</guid>
-      <description></description>
-    </item>
-    
-    <item>
       <title>A卡机器学习配置与使用</title>
       <link>https://luokai.tech/posts/other/amdcpu_ml_install/</link>
       <pubDate>Sat, 11 Feb 2023 11:05:08 +0800</pubDate>
@@ -91,6 +82,15 @@
       
       <guid>https://luokai.tech/posts/paper/occlusion_face/</guid>
       <description>论文阅读</description>
+    </item>
+    
+    <item>
+      <title></title>
+      <link>https://luokai.tech/about/about/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>https://luokai.tech/about/about/</guid>
+      <description>地点：深圳</description>
     </item>
     
     
