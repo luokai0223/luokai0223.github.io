@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="zh" dir="auto">
+
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>PyTorch 源码阅读笔记（6）：PyTorch 2.0 编译与安装 | K&#39;s blog</title>
+<meta name="keywords" content="PyTorch, 2.0">
+<meta name="description" content="编译安装">
+<meta name="author" content="luokai">
+<link rel="canonical" href="https://luokai.tech/posts/pytorch_read/build_v2/">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.938a2ae405ffe5d9d39bf4fcbd809c6c18f56332c2c71b483718db4b263d5c97.css" integrity="sha256-k4oq5AX/5dnTm/T8vYCcbBj1YzLCxxtINxjbSyY9XJc=" rel="preload stylesheet" as="style">
+<script defer crossorigin="anonymous" src="/assets/js/highlight.f413e19d0714851f6474e7ee9632408e58ac146fbdbe62747134bea2fa3415e0.js" integrity="sha256-9BPhnQcUhR9kdOfuljJAjlisFG&#43;9vmJ0cTS&#43;ovo0FeA="
+    onload="hljs.initHighlightingOnLoad();"></script>
+<link rel="icon" href="https://luokai.tech/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://luokai.tech/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://luokai.tech/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://luokai.tech/apple-touch-icon.png">
+<link rel="mask-icon" href="https://luokai.tech/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --hljs-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-track {
+                background: 0 0;
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-thumb {
+                border-color: var(--theme);
+            }
+        }
+
+    </style>
+</noscript>
+<script type="application/javascript">
+var doNotTrack = false;
+if (!doNotTrack) {
+	(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	})(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+	ga('create', 'UA-67470195-2', 'auto');
+	
+	ga('send', 'pageview');
+}
+</script><meta property="og:title" content="PyTorch 源码阅读笔记（6）：PyTorch 2.0 编译与安装" />
+<meta property="og:description" content="编译安装" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://luokai.tech/posts/pytorch_read/build_v2/" /><meta property="og:image" content="https://luokai.tech/%3Clink%20or%20path%20of%20image%20for%20opengraph,%20twitter-cards%3E"/><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-03-03T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-03-03T00:00:00+00:00" /><meta property="og:site_name" content="K&#39;s blog" />
+
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://luokai.tech/%3Clink%20or%20path%20of%20image%20for%20opengraph,%20twitter-cards%3E"/>
+
+<meta name="twitter:title" content="PyTorch 源码阅读笔记（6）：PyTorch 2.0 编译与安装"/>
+<meta name="twitter:description" content="编译安装"/>
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position":  1 ,
+      "name": "Posts",
+      "item": "https://luokai.tech/posts/"
+    }, 
+    {
+      "@type": "ListItem",
+      "position":  2 ,
+      "name": "PyTorch 源码阅读笔记（6）：PyTorch 2.0 编译与安装",
+      "item": "https://luokai.tech/posts/pytorch_read/build_v2/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "PyTorch 源码阅读笔记（6）：PyTorch 2.0 编译与安装",
+  "name": "PyTorch 源码阅读笔记（6）：PyTorch 2.0 编译与安装",
+  "description": "编译安装",
+  "keywords": [
+    "PyTorch", "2.0"
+  ],
+  "articleBody": "1、关于 PyTorch 2.0 PyTorch 主分支已经是2.0版本，新增了大量特性，参考PyTorch 2.0\n2、PyTorch 2.0 编译环境 2.0 不再支持 CUDA 11.6，我之前的编译环境一直是 wsl2 + ubuntu 20.04 + CUDA 11.6 + gcc，这次把环境换到了 wsl2 + debian 11 + CUDA 11.7 + oneapiMKL 2023.0.0 + gcc，同时还试了一下 windows 11 + CUDA 11.7 + visual studio 2022 套件。\n3、Python 编译安装 2.0 可以直接用如下命令安装\npip3 install numpy --pre torch[dynamo] --force-reinstall --extra-index-url https://download.pytorch.org/whl/nightly/cu117 自己编译安装的话参考官方命令\npython setup.py develop python setup.py install 上面命令安装的 PyTorch 无法运行 TorchDynamo，参照官方说法“To install GPU TorchDynamo dependencies, run make triton in the PyTorch repo root directory.”， 我编译没有成功，不过用了个取巧的办法，先直接安装 nightly 版，会帮你安装好所有依赖，然后删除掉安装好的 torch，运行 python setup.py install 安装自己编译好的版本， 这样做主要是想确保看源码时有个相同版本环境可以运行。\n4、C++ 编译安装 4.1、CMakeLists.txt 修改 project(Torch CXX C) 前面增加：\nset(CMAKE_CXX_STANDARD 17) set(CMAKE_CUDA_ARCHITECTURES \"75\") if (MSVC) set(CMAKE_CUDA_COMPILER \"C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.7/bin/nvcc.exe\") set(CUDAToolkit_ROOT \"C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.7\") elseif (UNIX) set(CMAKE_CUDA_COMPILER \"/usr/local/cuda/bin/nvcc\") set(CUDAToolkit_ROOT \"/usr/local/cuda\") endif() set(CMAKE_PREFIX_PATH \"/opt/intel/oneapi/mkl\") 4.2、cmake 生成 我使用如下cmake 选项编译\n-G Ninja -DBUILD_SHARED_LIBS:BOOL=ON -DCMAKE_BUILD_TYPE:STRING=Debug -DPYTHON_EXECUTABLE:PATH=/opt/miniconda3/bin/python -DBUILD_TEST:BOOL=OFF -DUSE_CUDA=ON -DUSE_NCCL=OFF -DUSE_MAGMA=OFF -DUSE_NUMA=OFF -DUSE_MPI=OFF -DUSE_METAL=OFF -DUSE_OPENMP=OFF -Wno-dev 4.3、linux 编译问题 4.3.1、cmake 生成报错 cmake 生成过程，会报错nvcc fatal : -Wno-unused-variable，修改了几个cmake相关的配置后依旧报错，关闭BUILD_TEST选型后不再报错。\n4.4、windows 编译问题 4.4.1、CUDA 安装 安装对应的 CUDA 安装包，设置好环境变量。 同时把 C:\\Program Files\\NVIDIA Corporation\\NvToolsExt 目录复制到 C:\\Program Files\\NVIDIA GPU Computing Toolkit\\NvToolsExt，否则 cmake 配置时会报 “Cannot find nvToolsExt”。\n4.4.2、vs2022 版本问题 编译过程报错fatal error LNK1161: 导出规范无效，具体如下\nFAILED: bin/torch_cpu.dll lib/torch_cpu.lib cmd.exe /C \"cd . \u0026\u0026 \"C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\Common7\\IDE\\CommonExtensions\\Microsoft\\CMake\\CMake\\bin\\cmake.exe\" -E vs_link_dll --intdir=caffe2\\CMakeFiles\\torch_cpu.dir --rc=C:\\PROGRA~2\\WI3CF2~1\\10\\bin\\100220~1.0\\x64\\rc.exe --mt=C:\\PROGRA~2\\WI3CF2~1\\10\\bin\\100220~1.0\\x64\\mt.exe --manifests -- C:\\PROGRA~1\\MICROS~2\\2022\\COMMUN~1\\VC\\Tools\\MSVC\\1434~1.319\\bin\\Hostx64\\x64\\link.exe /nologo @CMakeFiles\\torch_cpu.rsp /out:bin\\torch_cpu.dll /implib:lib\\torch_cpu.lib /pdb:bin\\torch_cpu.pdb /dll /version:0.0 /machine:x64 /ignore:4049 /ignore:4217 /ignore:4099 /debug /INCREMENTAL:NO -WHOLEARCHIVE:D:/git_source/pytorch/out/build/x64-Debug/lib/caffe2_protos.lib -WHOLEARCHIVE:D:/git_source/pytorch/out/build/x64-Debug/lib/onnx.lib \u0026\u0026 cd .\" LINK: command \"C:\\PROGRA~1\\MICROS~2\\2022\\COMMUN~1\\VC\\Tools\\MSVC\\1434~1.319\\bin\\Hostx64\\x64\\link.exe /nologo @CMakeFiles\\torch_cpu.rsp /out:bin\\torch_cpu.dll /implib:lib\\torch_cpu.lib /pdb:bin\\torch_cpu.pdb /dll /version:0.0 /machine:x64 /ignore:4049 /ignore:4217 /ignore:4099 /debug /INCREMENTAL:NO -WHOLEARCHIVE:D:/git_source/pytorch/out/build/x64-Debug/lib/caffe2_protos.lib -WHOLEARCHIVE:D:/git_source/pytorch/out/build/x64-Debug/lib/onnx.lib /MANIFEST /MANIFESTFILE:bin\\torch_cpu.dll.manifest\" failed (exit code 1161) with the following output: D:\\git_source\\pytorch\\out\\build\\x64-Debug\\LazyNativeFunctions.cpp.obj : fatal error LNK1161: 导出规范无效 发现是编译工具的问题fatal error LNK1161: invalid export specification, 我在 version 17.4.1 遇见，微软官方在 version 17.4.3 解决thread_local-causing-fatal-error-LNK1161，于是直接升级到最新版 version 17.5.0，问题解决。\n",
+  "wordCount" : "266",
+  "inLanguage": "zh",
+  "datePublished": "2023-03-03T00:00:00Z",
+  "dateModified": "2023-03-03T00:00:00Z",
+  "author":{
+    "@type": "Person",
+    "name": "luokai"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://luokai.tech/posts/pytorch_read/build_v2/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "K's blog",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://luokai.tech/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+
+<body class="" id="top">
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.body.classList.add('dark');
+    } else if (localStorage.getItem("pref-theme") === "light") {
+        document.body.classList.remove('dark')
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.body.classList.add('dark');
+    }
+
+</script>
+
+<header class="header">
+    <nav class="nav">
+        <div class="logo">
+            <a href="https://luokai.tech/" accesskey="h" title="K&#39;s blog (Alt + H)">K&#39;s blog</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" accesskey="t" title="(Alt + T)">
+                    <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu">
+            <li>
+                <a href="https://luokai.tech/categories" title="分类">
+                    <span>分类</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://luokai.tech/tags" title="标签">
+                    <span>标签</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://luokai.tech/search" title="搜索">
+                    <span>搜索</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://luokai.tech/archives" title="归档">
+                    <span>归档</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://luokai.tech/about/about" title="联系我">
+                    <span>联系我</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    <div class="breadcrumbs"><a href="https://luokai.tech/">主页</a>&nbsp;»&nbsp;<a href="https://luokai.tech/posts/">Posts</a></div>
+    <h1 class="post-title">
+      PyTorch 源码阅读笔记（6）：PyTorch 2.0 编译与安装
+    </h1>
+    <div class="post-description">
+      编译安装
+    </div>
+    <div class="post-meta"><span title='2023-03-03 00:00:00 +0000 UTC'>2023-03-03</span>&nbsp;·&nbsp;266 字&nbsp;·&nbsp;luokai
+
+</div>
+  </header> <aside id="toc-container" class="toc-container wide">
+    <div class="toc">
+        <details  open>
+            <summary accesskey="c" title="(Alt + C)">
+                <span class="details">目录</span>
+            </summary>
+
+            <div class="inner"><ul>
+                    <li>
+                        <a href="#1%e5%85%b3%e4%ba%8e-pytorch-20" aria-label="1、关于 PyTorch 2.0">1、关于 PyTorch 2.0</a></li>
+                    <li>
+                        <a href="#2pytorch-20-%e7%bc%96%e8%af%91%e7%8e%af%e5%a2%83" aria-label="2、PyTorch 2.0 编译环境">2、PyTorch 2.0 编译环境</a></li>
+                    <li>
+                        <a href="#3python-%e7%bc%96%e8%af%91%e5%ae%89%e8%a3%85" aria-label="3、Python 编译安装">3、Python 编译安装</a></li>
+                    <li>
+                        <a href="#4c-%e7%bc%96%e8%af%91%e5%ae%89%e8%a3%85" aria-label="4、C&#43;&#43; 编译安装">4、C++ 编译安装</a><ul>
+                            
+                    <li>
+                        <a href="#41cmakeliststxt-%e4%bf%ae%e6%94%b9" aria-label="4.1、CMakeLists.txt 修改">4.1、CMakeLists.txt 修改</a></li>
+                    <li>
+                        <a href="#42cmake-%e7%94%9f%e6%88%90" aria-label="4.2、cmake 生成">4.2、cmake 生成</a></li>
+                    <li>
+                        <a href="#43linux-%e7%bc%96%e8%af%91%e9%97%ae%e9%a2%98" aria-label="4.3、linux 编译问题">4.3、linux 编译问题</a><ul>
+                            
+                    <li>
+                        <a href="#431cmake-%e7%94%9f%e6%88%90%e6%8a%a5%e9%94%99" aria-label="4.3.1、cmake 生成报错">4.3.1、cmake 生成报错</a></li></ul>
+                    </li>
+                    <li>
+                        <a href="#44windows-%e7%bc%96%e8%af%91%e9%97%ae%e9%a2%98" aria-label="4.4、windows 编译问题">4.4、windows 编译问题</a><ul>
+                            
+                    <li>
+                        <a href="#441cuda-%e5%ae%89%e8%a3%85" aria-label="4.4.1、CUDA 安装">4.4.1、CUDA 安装</a></li>
+                    <li>
+                        <a href="#442vs2022-%e7%89%88%e6%9c%ac%e9%97%ae%e9%a2%98" aria-label="4.4.2、vs2022 版本问题">4.4.2、vs2022 版本问题</a>
+                    </li>
+                </ul>
+                </li>
+                </ul>
+                </li>
+                </ul>
+            </div>
+        </details>
+    </div>
+</aside>
+<script>
+    let activeElement;
+    let elements;
+    window.addEventListener('DOMContentLoaded', function (event) {
+        checkTocPosition();
+
+        elements = document.querySelectorAll('h1[id],h2[id],h3[id],h4[id],h5[id],h6[id]');
+         
+         activeElement = elements[0];
+         const id = encodeURI(activeElement.getAttribute('id')).toLowerCase();
+         document.querySelector(`.inner ul li a[href="#${id}"]`).classList.add('active');
+     }, false);
+
+    window.addEventListener('resize', function(event) {
+        checkTocPosition();
+    }, false);
+
+    window.addEventListener('scroll', () => {
+        
+        activeElement = Array.from(elements).find((element) => {
+            if ((getOffsetTop(element) - window.pageYOffset) > 0 && 
+                (getOffsetTop(element) - window.pageYOffset) < window.innerHeight/2) {
+                return element;
+            }
+        }) || activeElement
+
+        elements.forEach(element => {
+             const id = encodeURI(element.getAttribute('id')).toLowerCase();
+             if (element === activeElement){
+                 document.querySelector(`.inner ul li a[href="#${id}"]`).classList.add('active');
+             } else {
+                 document.querySelector(`.inner ul li a[href="#${id}"]`).classList.remove('active');
+             }
+         })
+     }, false);
+
+    const main = parseInt(getComputedStyle(document.body).getPropertyValue('--article-width'), 10);
+    const toc = parseInt(getComputedStyle(document.body).getPropertyValue('--toc-width'), 10);
+    const gap = parseInt(getComputedStyle(document.body).getPropertyValue('--gap'), 10);
+
+    function checkTocPosition() {
+        const width = document.body.scrollWidth;
+
+        if (width - main - (toc * 2) - (gap * 4) > 0) {
+            document.getElementById("toc-container").classList.add("wide");
+        } else {
+            document.getElementById("toc-container").classList.remove("wide");
+        }
+    }
+
+    function getOffsetTop(element) {
+        if (!element.getClientRects().length) {
+            return 0;
+        }
+        let rect = element.getBoundingClientRect();
+        let win = element.ownerDocument.defaultView;
+        return rect.top + win.pageYOffset;   
+    }
+</script>
+  <div class="post-content"><h2 id="1关于-pytorch-20">1、关于 PyTorch 2.0<a hidden class="anchor" aria-hidden="true" href="#1关于-pytorch-20">#</a></h2>
+<p>PyTorch 主分支已经是2.0版本，新增了大量特性，参考<a href="https://pytorch.org/get-started/pytorch-2.0/#overview">PyTorch 2.0</a></p>
+<h2 id="2pytorch-20-编译环境">2、PyTorch 2.0 编译环境<a hidden class="anchor" aria-hidden="true" href="#2pytorch-20-编译环境">#</a></h2>
+<p>2.0 不再支持 CUDA 11.6，我之前的编译环境一直是 wsl2 + ubuntu 20.04 + CUDA 11.6 + gcc，这次把环境换到了 wsl2 + debian 11 + CUDA 11.7 + oneapiMKL 2023.0.0 + gcc，同时还试了一下 windows 11 + CUDA 11.7 + visual studio 2022 套件。</p>
+<h2 id="3python-编译安装">3、Python 编译安装<a hidden class="anchor" aria-hidden="true" href="#3python-编译安装">#</a></h2>
+<p>2.0 可以直接用如下命令安装</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl">pip3 install numpy --pre torch<span class="o">[</span>dynamo<span class="o">]</span> --force-reinstall --extra-index-url https://download.pytorch.org/whl/nightly/cu117
+</span></span></code></pre></div><p>自己编译安装的话参考官方命令</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl">python setup.py develop
+</span></span><span class="line"><span class="cl">python setup.py install
+</span></span></code></pre></div><p>上面命令安装的 PyTorch 无法运行 TorchDynamo，参照官方说法“To install GPU TorchDynamo dependencies, run make triton in the PyTorch repo root directory.”，
+我编译没有成功，不过用了个取巧的办法，先直接安装 nightly 版，会帮你安装好所有依赖，然后删除掉安装好的 torch，运行 python setup.py install 安装自己编译好的版本，
+这样做主要是想确保看源码时有个相同版本环境可以运行。</p>
+<h2 id="4c-编译安装">4、C++ 编译安装<a hidden class="anchor" aria-hidden="true" href="#4c-编译安装">#</a></h2>
+<h3 id="41cmakeliststxt-修改">4.1、CMakeLists.txt 修改<a hidden class="anchor" aria-hidden="true" href="#41cmakeliststxt-修改">#</a></h3>
+<p>project(Torch CXX C) 前面增加：</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cmake" data-lang="cmake"><span class="line"><span class="cl"><span class="nb">set</span><span class="p">(</span><span class="s">CMAKE_CXX_STANDARD</span> <span class="s">17</span><span class="p">)</span><span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err"></span><span class="nb">set</span><span class="p">(</span><span class="s">CMAKE_CUDA_ARCHITECTURES</span> <span class="s2">&#34;75&#34;</span><span class="p">)</span><span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err"></span><span class="nb">if</span> <span class="p">(</span><span class="s">MSVC</span><span class="p">)</span><span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err"></span>  <span class="nb">set</span><span class="p">(</span><span class="s">CMAKE_CUDA_COMPILER</span> <span class="s2">&#34;C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.7/bin/nvcc.exe&#34;</span><span class="p">)</span><span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err"></span>  <span class="nb">set</span><span class="p">(</span><span class="s">CUDAToolkit_ROOT</span> <span class="s2">&#34;C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.7&#34;</span><span class="p">)</span><span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err"></span><span class="nb">elseif</span> <span class="p">(</span><span class="s">UNIX</span><span class="p">)</span><span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err"></span>  <span class="nb">set</span><span class="p">(</span><span class="s">CMAKE_CUDA_COMPILER</span> <span class="s2">&#34;/usr/local/cuda/bin/nvcc&#34;</span><span class="p">)</span><span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err"></span>  <span class="nb">set</span><span class="p">(</span><span class="s">CUDAToolkit_ROOT</span> <span class="s2">&#34;/usr/local/cuda&#34;</span><span class="p">)</span><span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err"></span><span class="nb">endif</span><span class="p">()</span><span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err"></span><span class="nb">set</span><span class="p">(</span><span class="s">CMAKE_PREFIX_PATH</span> <span class="s2">&#34;/opt/intel/oneapi/mkl&#34;</span><span class="p">)</span><span class="err">
+</span></span></span></code></pre></div><h3 id="42cmake-生成">4.2、cmake 生成<a hidden class="anchor" aria-hidden="true" href="#42cmake-生成">#</a></h3>
+<p>我使用如下cmake 选项编译</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl">-G Ninja
+</span></span><span class="line"><span class="cl">-DBUILD_SHARED_LIBS:BOOL<span class="o">=</span>ON
+</span></span><span class="line"><span class="cl">-DCMAKE_BUILD_TYPE:STRING<span class="o">=</span>Debug
+</span></span><span class="line"><span class="cl">-DPYTHON_EXECUTABLE:PATH<span class="o">=</span>/opt/miniconda3/bin/python
+</span></span><span class="line"><span class="cl">-DBUILD_TEST:BOOL<span class="o">=</span>OFF
+</span></span><span class="line"><span class="cl">-DUSE_CUDA<span class="o">=</span>ON
+</span></span><span class="line"><span class="cl">-DUSE_NCCL<span class="o">=</span>OFF
+</span></span><span class="line"><span class="cl">-DUSE_MAGMA<span class="o">=</span>OFF
+</span></span><span class="line"><span class="cl">-DUSE_NUMA<span class="o">=</span>OFF
+</span></span><span class="line"><span class="cl">-DUSE_MPI<span class="o">=</span>OFF
+</span></span><span class="line"><span class="cl">-DUSE_METAL<span class="o">=</span>OFF
+</span></span><span class="line"><span class="cl">-DUSE_OPENMP<span class="o">=</span>OFF
+</span></span><span class="line"><span class="cl">-Wno-dev
+</span></span></code></pre></div><h3 id="43linux-编译问题">4.3、linux 编译问题<a hidden class="anchor" aria-hidden="true" href="#43linux-编译问题">#</a></h3>
+<h4 id="431cmake-生成报错">4.3.1、cmake 生成报错<a hidden class="anchor" aria-hidden="true" href="#431cmake-生成报错">#</a></h4>
+<p>cmake 生成过程，会报错nvcc fatal  : -Wno-unused-variable，修改了几个cmake相关的配置后依旧报错，关闭BUILD_TEST选型后不再报错。</p>
+<h3 id="44windows-编译问题">4.4、windows 编译问题<a hidden class="anchor" aria-hidden="true" href="#44windows-编译问题">#</a></h3>
+<h4 id="441cuda-安装">4.4.1、CUDA 安装<a hidden class="anchor" aria-hidden="true" href="#441cuda-安装">#</a></h4>
+<p>安装对应的 CUDA 安装包，设置好环境变量。
+同时把 C:\Program Files\NVIDIA Corporation\NvToolsExt 目录复制到 C:\Program Files\NVIDIA GPU Computing Toolkit\NvToolsExt，否则 cmake 配置时会报 &ldquo;Cannot find nvToolsExt&rdquo;。</p>
+<h4 id="442vs2022-版本问题">4.4.2、vs2022 版本问题<a hidden class="anchor" aria-hidden="true" href="#442vs2022-版本问题">#</a></h4>
+<p>编译过程报错fatal error LNK1161: 导出规范无效，具体如下</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl">  FAILED: bin/torch_cpu.dll lib/torch_cpu.lib 
+</span></span><span class="line"><span class="cl">  cmd.exe /C <span class="s2">&#34;cd . &amp;&amp; &#34;</span>C:<span class="se">\P</span>rogram Files<span class="se">\M</span>icrosoft Visual Studio<span class="se">\2</span>022<span class="se">\C</span>ommunity<span class="se">\C</span>ommon7<span class="se">\I</span>DE<span class="se">\C</span>ommonExtensions<span class="se">\M</span>icrosoft<span class="se">\C</span>Make<span class="se">\C</span>Make<span class="se">\b</span>in<span class="se">\c</span>make.exe<span class="s2">&#34; -E vs_link_dll --intdir=caffe2\CMakeFiles\torch_cpu.dir --rc=C:\PROGRA~2\WI3CF2~1\10\bin\100220~1.0\x64\rc.exe --mt=C:\PROGRA~2\WI3CF2~1\10\bin\100220~1.0\x64\mt.exe --manifests  -- C:\PROGRA~1\MICROS~2\2022\COMMUN~1\VC\Tools\MSVC\1434~1.319\bin\Hostx64\x64\link.exe /nologo @CMakeFiles\torch_cpu.rsp  /out:bin\torch_cpu.dll /implib:lib\torch_cpu.lib /pdb:bin\torch_cpu.pdb /dll /version:0.0 /machine:x64 /ignore:4049 /ignore:4217 /ignore:4099 /debug /INCREMENTAL:NO  -WHOLEARCHIVE:D:/git_source/pytorch/out/build/x64-Debug/lib/caffe2_protos.lib -WHOLEARCHIVE:D:/git_source/pytorch/out/build/x64-Debug/lib/onnx.lib  &amp;&amp; cd .&#34;</span>
+</span></span><span class="line"><span class="cl">  LINK: <span class="nb">command</span> <span class="s2">&#34;C:\PROGRA~1\MICROS~2\2022\COMMUN~1\VC\Tools\MSVC\1434~1.319\bin\Hostx64\x64\link.exe /nologo @CMakeFiles\torch_cpu.rsp /out:bin\torch_cpu.dll /implib:lib\torch_cpu.lib /pdb:bin\torch_cpu.pdb /dll /version:0.0 /machine:x64 /ignore:4049 /ignore:4217 /ignore:4099 /debug /INCREMENTAL:NO -WHOLEARCHIVE:D:/git_source/pytorch/out/build/x64-Debug/lib/caffe2_protos.lib -WHOLEARCHIVE:D:/git_source/pytorch/out/build/x64-Debug/lib/onnx.lib /MANIFEST /MANIFESTFILE:bin\torch_cpu.dll.manifest&#34;</span> failed <span class="o">(</span><span class="nb">exit</span> code 1161<span class="o">)</span> with the following output:
+</span></span><span class="line"><span class="cl">D:<span class="se">\g</span>it_source<span class="se">\p</span>ytorch<span class="se">\o</span>ut<span class="se">\b</span>uild<span class="se">\x</span>64-Debug<span class="se">\L</span>azyNativeFunctions.cpp.obj : fatal error LNK1161: 导出规范无效
+</span></span></code></pre></div><p>发现是编译工具的问题<a href="https://github.com/pytorch/pytorch/issues/87957">fatal error LNK1161: invalid export specification</a>,
+我在 version 17.4.1 遇见，微软官方在 version 17.4.3 解决<a href="https://developercommunity.visualstudio.com/t/thread_local-causing-fatal-error-LNK1161/10199441">thread_local-causing-fatal-error-LNK1161</a>，于是直接升级到最新版 version 17.5.0，问题解决。</p>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+    </ul>
+<nav class="paginav">
+  <a class="next" href="https://luokai.tech/posts/pytorch_read/torchscript/">
+    <span class="title">下一页 »</span>
+    <br>
+    <span>PyTorch 源码阅读笔记（5）：TorchScript</span>
+  </a>
+</nav>
+
+  </footer>
+</article>
+    </main>
+    
+<footer class="footer">
+    <span>&copy; 2023 <a href="https://luokai.tech/">K&#39;s blog</a></span>
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" aria-label="go to top" title="Go to Top (Alt + G)" class="top-link" id="top-link" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentColor">
+        <path d="M12 6H0l6-6z" />
+    </svg>
+</a>
+
+<script>
+    let menu = document.getElementById('menu')
+    if (menu) {
+        menu.scrollLeft = localStorage.getItem("menu-scroll-position");
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var mybutton = document.getElementById("top-link");
+    window.onscroll = function () {
+        if (document.body.scrollTop > 800 || document.documentElement.scrollTop > 800) {
+            mybutton.style.visibility = "visible";
+            mybutton.style.opacity = "1";
+        } else {
+            mybutton.style.visibility = "hidden";
+            mybutton.style.opacity = "0";
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        if (document.body.className.includes("dark")) {
+            document.body.classList.remove('dark');
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            document.body.classList.add('dark');
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+<script>
+    document.querySelectorAll('pre > code').forEach((codeblock) => {
+        const container = codeblock.parentNode.parentNode;
+
+        const copybutton = document.createElement('button');
+        copybutton.classList.add('copy-code');
+        copybutton.innerHTML = '复制';
+
+        function copyingDone() {
+            copybutton.innerHTML = '已复制！';
+            setTimeout(() => {
+                copybutton.innerHTML = '复制';
+            }, 2000);
+        }
+
+        copybutton.addEventListener('click', (cb) => {
+            if ('clipboard' in navigator) {
+                navigator.clipboard.writeText(codeblock.textContent);
+                copyingDone();
+                return;
+            }
+
+            const range = document.createRange();
+            range.selectNodeContents(codeblock);
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+            try {
+                document.execCommand('copy');
+                copyingDone();
+            } catch (e) { };
+            selection.removeRange(range);
+        });
+
+        if (container.classList.contains("highlight")) {
+            container.appendChild(copybutton);
+        } else if (container.parentNode.firstChild == container) {
+            
+        } else if (codeblock.parentNode.parentNode.parentNode.parentNode.parentNode.nodeName == "TABLE") {
+            
+            codeblock.parentNode.parentNode.parentNode.parentNode.parentNode.appendChild(copybutton);
+        } else {
+            
+            codeblock.parentNode.appendChild(copybutton);
+        }
+    });
+</script>
+</body>
+
+</html>

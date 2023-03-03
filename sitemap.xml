@@ -3,18 +3,21 @@
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
     <loc>https://luokai.tech/categories/</loc>
-    <lastmod>2023-02-23T00:00:00+00:00</lastmod>
+    <lastmod>2023-03-03T00:00:00+00:00</lastmod>
   </url><url>
     <loc>https://luokai.tech/</loc>
-    <lastmod>2023-02-23T00:00:00+00:00</lastmod>
+    <lastmod>2023-03-03T00:00:00+00:00</lastmod>
   </url><url>
     <loc>https://luokai.tech/posts/</loc>
-    <lastmod>2023-02-23T00:00:00+00:00</lastmod>
-  </url><url>
-    <loc>https://luokai.tech/tags/pytorch/</loc>
-    <lastmod>2023-02-23T00:00:00+00:00</lastmod>
+    <lastmod>2023-03-03T00:00:00+00:00</lastmod>
   </url><url>
     <loc>https://luokai.tech/categories/pytorch-%E6%BA%90%E7%A0%81%E9%98%85%E8%AF%BB%E7%AC%94%E8%AE%B0/</loc>
+    <lastmod>2023-03-03T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>https://luokai.tech/posts/pytorch_read/build_v2/</loc>
+    <lastmod>2023-03-03T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>https://luokai.tech/tags/pytorch/</loc>
     <lastmod>2023-02-23T00:00:00+00:00</lastmod>
   </url><url>
     <loc>https://luokai.tech/posts/pytorch_read/torchscript/</loc>

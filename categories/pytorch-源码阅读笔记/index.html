@@ -157,6 +157,22 @@ if (!doNotTrack) {
 
 <article class="post-entry tag-entry"> 
   <header class="entry-header">
+    <h2>PyTorch 源码阅读笔记（6）：PyTorch 2.0 编译与安装
+    </h2>
+  </header>
+  <div class="entry-content">
+    <p>1、关于 PyTorch 2.0 PyTorch 主分支已经是2.0版本，新增了大量特性，参考PyTorch 2.0
+2、PyTorch 2.0 编译环境 2.0 不再支持 CUDA 11.6，我之前的编译环境一直是 wsl2 &#43; ubuntu 20.04 &#43; CUDA 11.6 &#43; gcc，这次把环境换到了 wsl2 &#43; debian 11 &#43; CUDA 11.7 &#43; oneapiMKL 2023.0.0 &#43; gcc，同时还试了一下 windows 11 &#43; CUDA 11.7 &#43; visual studio 2022 套件。
+3、Python 编译安装 2.0 可以直接用如下命令安装
+pip3 install numpy --pre torch[dynamo] --force-reinstall --extra-index-url https://download.pytorch.org/whl/nightly/cu117 自己编译安装的话参考官方命令
+python setup.py develop python setup.py install 上面命令安装的 PyTorch 无法运行 TorchDynamo，参照官方说法“To install GPU TorchDynamo dependencies, run make triton in the PyTorch repo root directory....</p>
+  </div>
+  <footer class="entry-footer"><span title='2023-03-03 00:00:00 +0000 UTC'>2023-03-03</span>&nbsp;·&nbsp;266 字&nbsp;·&nbsp;luokai</footer>
+  <a class="entry-link" aria-label="post link to PyTorch 源码阅读笔记（6）：PyTorch 2.0 编译与安装" href="https://luokai.tech/posts/pytorch_read/build_v2/"></a>
+</article>
+
+<article class="post-entry tag-entry"> 
+  <header class="entry-header">
     <h2>PyTorch 源码阅读笔记（5）：TorchScript
     </h2>
   </header>
@@ -224,9 +240,9 @@ using torch::autograd::Variable = at::Tensor 自动微分 反向传播 api backw
   </header>
   <div class="entry-content">
     <p>PyTorch代码目录结构 参考PyTorch官方描述，大致代码结构如下所述：
-c10 - Core library —— 核心库，包含最基本的功能，aten/src/ATen/core中的代码在逐渐往此处迁移 aten - PyTorch C&#43;&#43; 张量库，不包括自动梯度支持 aten/src - aten/src/ATen aten/src/ATen/core - 核心函数库，逐步往c10迁移中。 aten/src/ATen/native - 原生算子库，大部分CPU算子在此一级目录下，除了一些有特殊编译需求的算子在cpu目录下 aten/src/ATen/native/cpu - 某些需要类似AVX等特殊指令集编译的cpu算子实现 aten/src/ATen/native/cuda - CUDA 算子 aten/src/ATen/native/sparse - CPU 和 CUDA 的稀疏矩阵算子 aten/src/ATen/native/mkl，aten/src/ATen/native/mkldnn，…… - 如文件夹描述，对应的算子 torch - 实际的PyTorch库，除了torch/csrc之外的都是Python模块 torch/csrc - Python 和 C&#43;&#43; 混编库 torch/csrc/jit - TorchScript JIT frontend torch/csrc/autograd - 自动微分实现 torch/csrc/api - The PyTorch C&#43;&#43; frontend. torch/csrc/distributed - tools - 代码生成模块，PyTorch很多代码是在编译时自动生成的 test - Python前端单元测试模块，C&#43;&#43;前端的单元测试在其他文件夹 caffe2 - Caffe2 库合并入PyTorch，具体合并了哪些官方说的太抽象，以后看到了再更新 PyTorch 编译 PyTorch 官方有单独打包的 C&#43;&#43; 库 libtorch...</p>
+c10 - Core library —— 核心库，包含最基本的功能，aten/src/ATen/core中的代码在逐渐往此处迁移 aten - PyTorch C&#43;&#43; 张量库，不包括自动梯度支持 aten/src - aten/src/ATen aten/src/ATen/core - 核心函数库，逐步往c10迁移中。 aten/src/ATen/native - 原生算子库，大部分CPU算子在此一级目录下，除了一些有特殊编译需求的算子在cpu目录下 aten/src/ATen/native/cpu - 某些需要类似AVX等特殊指令集编译的cpu算子实现 aten/src/ATen/native/cuda - CUDA 算子 aten/src/ATen/native/sparse - CPU 和 CUDA 的稀疏矩阵算子 aten/src/ATen/native/mkl，aten/src/ATen/native/mkldnn，…… - 如文件夹描述，对应的算子 torch - 实际的PyTorch库，除了torch/csrc之外的都是Python模块 torch/csrc - Python 和 C&#43;&#43; 混编库 torch/csrc/jit - TorchScript JIT frontend torch/csrc/autograd - 自动微分实现 torch/csrc/api - The PyTorch C&#43;&#43; frontend. torch/csrc/distributed - tools - 代码生成模块，PyTorch很多代码是在编译时自动生成的 test - Python前端单元测试模块，C&#43;&#43;前端的单元测试在其他文件夹 caffe2 - Caffe2 库合并入PyTorch，具体合并了哪些官方说的太抽象，以后看到了再更新 PyTorch c&#43;&#43; 编译 PyTorch 官方有单独打包的 C&#43;&#43; 库 libtorch...</p>
   </div>
-  <footer class="entry-footer"><span title='2023-02-11 00:00:00 +0000 UTC'>2023-11-11</span>&nbsp;·&nbsp;341 字&nbsp;·&nbsp;luokai</footer>
+  <footer class="entry-footer"><span title='2023-02-11 00:00:00 +0000 UTC'>2023-11-11</span>&nbsp;·&nbsp;342 字&nbsp;·&nbsp;luokai</footer>
   <a class="entry-link" aria-label="post link to PyTorch 源码阅读笔记（0）：代码结构与编译" href="https://luokai.tech/posts/pytorch_read/build/"></a>
 </article>
 
