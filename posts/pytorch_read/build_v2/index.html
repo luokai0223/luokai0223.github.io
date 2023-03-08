@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <meta name="robots" content="index, follow">
 <title>PyTorch 源码阅读笔记（6）：PyTorch 2.0 编译与安装 | K&#39;s blog</title>
-<meta name="keywords" content="PyTorch, 2.0">
+<meta name="keywords" content="PyTorch 2.0, PyTorch 编译">
 <meta name="description" content="编译安装">
 <meta name="author" content="luokai">
 <link rel="canonical" href="https://luokai.tech/posts/pytorch_read/build_v2/">
@@ -110,10 +110,10 @@ if (!doNotTrack) {
   "name": "PyTorch 源码阅读笔记（6）：PyTorch 2.0 编译与安装",
   "description": "编译安装",
   "keywords": [
-    "PyTorch", "2.0"
+    "PyTorch 2.0", "PyTorch 编译"
   ],
-  "articleBody": "1、关于 PyTorch 2.0 PyTorch 主分支已经是2.0版本，新增了大量特性，参考PyTorch 2.0\n2、PyTorch 2.0 编译环境 2.0 不再支持 CUDA 11.6，我之前的编译环境一直是 wsl2 + ubuntu 20.04 + CUDA 11.6 + gcc，这次把环境换到了 wsl2 + debian 11 + CUDA 11.7 + oneapiMKL 2023.0.0 + gcc，同时还试了一下 windows 11 + CUDA 11.7 + visual studio 2022 套件。\n3、Python 编译安装 2.0 可以直接用如下命令安装\npip3 install numpy --pre torch[dynamo] --force-reinstall --extra-index-url https://download.pytorch.org/whl/nightly/cu117 自己编译安装的话参考官方命令\npython setup.py develop python setup.py install 上面命令安装的 PyTorch 无法运行 TorchDynamo，参照官方说法“To install GPU TorchDynamo dependencies, run make triton in the PyTorch repo root directory.”， 我编译没有成功，不过用了个取巧的办法，先直接安装 nightly 版，会帮你安装好所有依赖，然后删除掉安装好的 torch，运行 python setup.py install 安装自己编译好的版本， 这样做主要是想确保看源码时有个相同版本环境可以运行。\n4、C++ 编译安装 4.1、CMakeLists.txt 修改 project(Torch CXX C) 前面增加：\nset(CMAKE_CXX_STANDARD 17) set(CMAKE_CUDA_ARCHITECTURES \"75\") if (MSVC) set(CMAKE_CUDA_COMPILER \"C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.7/bin/nvcc.exe\") set(CUDAToolkit_ROOT \"C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.7\") elseif (UNIX) set(CMAKE_CUDA_COMPILER \"/usr/local/cuda/bin/nvcc\") set(CUDAToolkit_ROOT \"/usr/local/cuda\") endif() set(CMAKE_PREFIX_PATH \"/opt/intel/oneapi/mkl\") 4.2、cmake 生成 我使用如下cmake 选项编译\n-G Ninja -DBUILD_SHARED_LIBS:BOOL=ON -DCMAKE_BUILD_TYPE:STRING=Debug -DPYTHON_EXECUTABLE:PATH=/opt/miniconda3/bin/python -DBUILD_TEST:BOOL=OFF -DUSE_CUDA=ON -DUSE_NCCL=OFF -DUSE_MAGMA=OFF -DUSE_NUMA=OFF -DUSE_MPI=OFF -DUSE_METAL=OFF -DUSE_OPENMP=OFF -Wno-dev 4.3、linux 编译问题 4.3.1、cmake 生成报错 cmake 生成过程，会报错nvcc fatal : -Wno-unused-variable，修改了几个cmake相关的配置后依旧报错，关闭BUILD_TEST选型后不再报错。\n4.4、windows 编译问题 4.4.1、CUDA 安装 安装对应的 CUDA 安装包，设置好环境变量。 同时把 C:\\Program Files\\NVIDIA Corporation\\NvToolsExt 目录复制到 C:\\Program Files\\NVIDIA GPU Computing Toolkit\\NvToolsExt，否则 cmake 配置时会报 “Cannot find nvToolsExt”。\n4.4.2、vs2022 版本问题 编译过程报错fatal error LNK1161: 导出规范无效，具体如下\nFAILED: bin/torch_cpu.dll lib/torch_cpu.lib cmd.exe /C \"cd . \u0026\u0026 \"C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\Common7\\IDE\\CommonExtensions\\Microsoft\\CMake\\CMake\\bin\\cmake.exe\" -E vs_link_dll --intdir=caffe2\\CMakeFiles\\torch_cpu.dir --rc=C:\\PROGRA~2\\WI3CF2~1\\10\\bin\\100220~1.0\\x64\\rc.exe --mt=C:\\PROGRA~2\\WI3CF2~1\\10\\bin\\100220~1.0\\x64\\mt.exe --manifests -- C:\\PROGRA~1\\MICROS~2\\2022\\COMMUN~1\\VC\\Tools\\MSVC\\1434~1.319\\bin\\Hostx64\\x64\\link.exe /nologo @CMakeFiles\\torch_cpu.rsp /out:bin\\torch_cpu.dll /implib:lib\\torch_cpu.lib /pdb:bin\\torch_cpu.pdb /dll /version:0.0 /machine:x64 /ignore:4049 /ignore:4217 /ignore:4099 /debug /INCREMENTAL:NO -WHOLEARCHIVE:D:/git_source/pytorch/out/build/x64-Debug/lib/caffe2_protos.lib -WHOLEARCHIVE:D:/git_source/pytorch/out/build/x64-Debug/lib/onnx.lib \u0026\u0026 cd .\" LINK: command \"C:\\PROGRA~1\\MICROS~2\\2022\\COMMUN~1\\VC\\Tools\\MSVC\\1434~1.319\\bin\\Hostx64\\x64\\link.exe /nologo @CMakeFiles\\torch_cpu.rsp /out:bin\\torch_cpu.dll /implib:lib\\torch_cpu.lib /pdb:bin\\torch_cpu.pdb /dll /version:0.0 /machine:x64 /ignore:4049 /ignore:4217 /ignore:4099 /debug /INCREMENTAL:NO -WHOLEARCHIVE:D:/git_source/pytorch/out/build/x64-Debug/lib/caffe2_protos.lib -WHOLEARCHIVE:D:/git_source/pytorch/out/build/x64-Debug/lib/onnx.lib /MANIFEST /MANIFESTFILE:bin\\torch_cpu.dll.manifest\" failed (exit code 1161) with the following output: D:\\git_source\\pytorch\\out\\build\\x64-Debug\\LazyNativeFunctions.cpp.obj : fatal error LNK1161: 导出规范无效 发现是编译工具的问题fatal error LNK1161: invalid export specification, 我在 version 17.4.1 遇见，微软官方在 version 17.4.3 解决thread_local-causing-fatal-error-LNK1161，于是直接升级到最新版 version 17.5.0，问题解决。\n",
-  "wordCount" : "266",
+  "articleBody": "1、关于 PyTorch 2.0 PyTorch 主分支已经是2.0版本，新增了大量特性，参考PyTorch 2.0\n2、PyTorch 2.0 编译环境 2.0 不再支持 CUDA 11.6，我之前的编译环境一直是 wsl2 + ubuntu 20.04 + CUDA 11.6 + gcc，这次把环境换到了 wsl2 + debian 11 + CUDA 11.7 + oneapiMKL 2023.0.0 + gcc，同时还试了一下 windows 11 + CUDA 11.7 + visual studio 2022 套件。\n3、Python 编译安装 2.0 可以直接用如下命令安装\npip3 install numpy --pre torch[dynamo] --force-reinstall --extra-index-url https://download.pytorch.org/whl/nightly/cu117 自己编译安装的话参考官方命令\npython setup.py develop python setup.py install 上面命令安装的 PyTorch 无法运行 TorchDynamo，参照官方说法“To install GPU TorchDynamo dependencies, run make triton in the PyTorch repo root directory.”， 我编译没有成功，不过用了个取巧的办法，先直接安装 nightly 版，会帮你安装好所有依赖，然后删除掉安装好的 torch，运行 python setup.py install 安装自己编译好的版本， 这样做主要是想确保看源码时有个相同版本环境可以运行。\n4、C++ 编译安装 4.1、CMakeLists.txt 修改 project(Torch CXX C) 前面增加：\nset(CMAKE_CXX_STANDARD 17) set(CMAKE_CUDA_ARCHITECTURES \"75\") if (MSVC) set(CMAKE_CUDA_COMPILER \"C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.7/bin/nvcc.exe\") set(CUDAToolkit_ROOT \"C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.7\") elseif (UNIX) set(CMAKE_CUDA_COMPILER \"/usr/local/cuda/bin/nvcc\") set(CUDAToolkit_ROOT \"/usr/local/cuda\") endif() set(CMAKE_PREFIX_PATH \"/opt/intel/oneapi/mkl\") 4.2、cmake 生成 我使用如下cmake 选项编译\n-G Ninja -DBUILD_SHARED_LIBS:BOOL=ON -DCMAKE_BUILD_TYPE:STRING=Debug -DPYTHON_EXECUTABLE:PATH=/opt/miniconda3/bin/python -DBUILD_TEST:BOOL=OFF -DUSE_CUDA=ON -DUSE_NCCL=OFF -DUSE_MAGMA=OFF -DUSE_NUMA=OFF -DUSE_MPI=OFF -DUSE_METAL=OFF -DUSE_OPENMP=OFF -Wno-dev 4.3、linux 编译问题 4.3.1、cmake 生成报错 cmake 生成过程，会报错nvcc fatal : -Wno-unused-variable，修改了几个cmake相关的配置后依旧报错，关闭BUILD_TEST选型后不再报错。\n4.4、windows 编译问题（未完成） 4.4.1、CUDA 安装 安装对应的 CUDA 安装包，设置好环境变量。 同时把 C:\\Program Files\\NVIDIA Corporation\\NvToolsExt 目录复制到 C:\\Program Files\\NVIDIA GPU Computing Toolkit\\NvToolsExt，否则 cmake 配置时会报 “Cannot find nvToolsExt”。\n4.4.2、vs2022 版本问题 编译过程报错fatal error LNK1161: 导出规范无效，具体如下\nFAILED: bin/torch_cpu.dll lib/torch_cpu.lib cmd.exe /C \"cd . \u0026\u0026 \"C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\Common7\\IDE\\CommonExtensions\\Microsoft\\CMake\\CMake\\bin\\cmake.exe\" -E vs_link_dll --intdir=caffe2\\CMakeFiles\\torch_cpu.dir --rc=C:\\PROGRA~2\\WI3CF2~1\\10\\bin\\100220~1.0\\x64\\rc.exe --mt=C:\\PROGRA~2\\WI3CF2~1\\10\\bin\\100220~1.0\\x64\\mt.exe --manifests -- C:\\PROGRA~1\\MICROS~2\\2022\\COMMUN~1\\VC\\Tools\\MSVC\\1434~1.319\\bin\\Hostx64\\x64\\link.exe /nologo @CMakeFiles\\torch_cpu.rsp /out:bin\\torch_cpu.dll /implib:lib\\torch_cpu.lib /pdb:bin\\torch_cpu.pdb /dll /version:0.0 /machine:x64 /ignore:4049 /ignore:4217 /ignore:4099 /debug /INCREMENTAL:NO -WHOLEARCHIVE:D:/git_source/pytorch/out/build/x64-Debug/lib/caffe2_protos.lib -WHOLEARCHIVE:D:/git_source/pytorch/out/build/x64-Debug/lib/onnx.lib \u0026\u0026 cd .\" LINK: command \"C:\\PROGRA~1\\MICROS~2\\2022\\COMMUN~1\\VC\\Tools\\MSVC\\1434~1.319\\bin\\Hostx64\\x64\\link.exe /nologo @CMakeFiles\\torch_cpu.rsp /out:bin\\torch_cpu.dll /implib:lib\\torch_cpu.lib /pdb:bin\\torch_cpu.pdb /dll /version:0.0 /machine:x64 /ignore:4049 /ignore:4217 /ignore:4099 /debug /INCREMENTAL:NO -WHOLEARCHIVE:D:/git_source/pytorch/out/build/x64-Debug/lib/caffe2_protos.lib -WHOLEARCHIVE:D:/git_source/pytorch/out/build/x64-Debug/lib/onnx.lib /MANIFEST /MANIFESTFILE:bin\\torch_cpu.dll.manifest\" failed (exit code 1161) with the following output: D:\\git_source\\pytorch\\out\\build\\x64-Debug\\LazyNativeFunctions.cpp.obj : fatal error LNK1161: 导出规范无效 发现是编译工具的问题fatal error LNK1161: invalid export specification, 我在 version 17.4.1 遇见，微软官方在 version 17.4.3 解决thread_local-causing-fatal-error-LNK1161，于是直接升级到最新版 version 17.5.0，问题解决。\n4.4.3 其他问题 还遇见如下问题，以后有空再看\n严重性\t代码\t说明\t项目\t文件\t行\t禁止显示状态 错误\tLNK2019\t无法解析的外部符号 \"private: static unsigned short __cdecl caffe2::TypeMeta::addTypeMetaData(void)\" (??$addTypeMetaData@VTensor@caffe2@@@TypeMeta@caffe2@@CAGXZ)，函数 \"private: static unsigned short __cdecl caffe2::TypeMeta::_typeMetaData(void)\" (??$_typeMetaData@VTensor@caffe2@@@TypeMeta@caffe2@@CAGXZ) 中引用了该符号 D:\\git_source\\pytorch\\out\\build\\x64-Debug\\pytorch\tD:\\git_source\\pytorch\\out\\build\\x64-Debug\\print_core_object_sizes_gpu.obj\t1\t严重性\t代码\t说明\t项目\t文件\t行\t禁止显示状态 错误\tLNK1120\t1 个无法解析的外部命令 D:\\git_source\\pytorch\\out\\build\\x64-Debug\\pytorch\tD:\\git_source\\pytorch\\out\\build\\x64-Debug\\bin\\Debug\\print_core_object_sizes_gpu.exe\t1\t",
+  "wordCount" : "313",
   "inLanguage": "zh",
   "datePublished": "2023-03-03T00:00:00Z",
   "dateModified": "2023-03-03T00:00:00Z",
@@ -216,7 +216,7 @@ if (!doNotTrack) {
     <div class="post-description">
       编译安装
     </div>
-    <div class="post-meta"><span title='2023-03-03 00:00:00 +0000 UTC'>2023-03-03</span>&nbsp;·&nbsp;266 字&nbsp;·&nbsp;luokai
+    <div class="post-meta"><span title='2023-03-03 00:00:00 +0000 UTC'>2023-03-03</span>&nbsp;·&nbsp;313 字&nbsp;·&nbsp;luokai
 
 </div>
   </header> <aside id="toc-container" class="toc-container wide">
@@ -247,12 +247,14 @@ if (!doNotTrack) {
                         <a href="#431cmake-%e7%94%9f%e6%88%90%e6%8a%a5%e9%94%99" aria-label="4.3.1、cmake 生成报错">4.3.1、cmake 生成报错</a></li></ul>
                     </li>
                     <li>
-                        <a href="#44windows-%e7%bc%96%e8%af%91%e9%97%ae%e9%a2%98" aria-label="4.4、windows 编译问题">4.4、windows 编译问题</a><ul>
+                        <a href="#44windows-%e7%bc%96%e8%af%91%e9%97%ae%e9%a2%98%e6%9c%aa%e5%ae%8c%e6%88%90" aria-label="4.4、windows 编译问题（未完成）">4.4、windows 编译问题（未完成）</a><ul>
                             
                     <li>
                         <a href="#441cuda-%e5%ae%89%e8%a3%85" aria-label="4.4.1、CUDA 安装">4.4.1、CUDA 安装</a></li>
                     <li>
-                        <a href="#442vs2022-%e7%89%88%e6%9c%ac%e9%97%ae%e9%a2%98" aria-label="4.4.2、vs2022 版本问题">4.4.2、vs2022 版本问题</a>
+                        <a href="#442vs2022-%e7%89%88%e6%9c%ac%e9%97%ae%e9%a2%98" aria-label="4.4.2、vs2022 版本问题">4.4.2、vs2022 版本问题</a></li>
+                    <li>
+                        <a href="#443-%e5%85%b6%e4%bb%96%e9%97%ae%e9%a2%98" aria-label="4.4.3 其他问题">4.4.3 其他问题</a>
                     </li>
                 </ul>
                 </li>
@@ -366,7 +368,7 @@ if (!doNotTrack) {
 </span></span></code></pre></div><h3 id="43linux-编译问题">4.3、linux 编译问题<a hidden class="anchor" aria-hidden="true" href="#43linux-编译问题">#</a></h3>
 <h4 id="431cmake-生成报错">4.3.1、cmake 生成报错<a hidden class="anchor" aria-hidden="true" href="#431cmake-生成报错">#</a></h4>
 <p>cmake 生成过程，会报错nvcc fatal  : -Wno-unused-variable，修改了几个cmake相关的配置后依旧报错，关闭BUILD_TEST选型后不再报错。</p>
-<h3 id="44windows-编译问题">4.4、windows 编译问题<a hidden class="anchor" aria-hidden="true" href="#44windows-编译问题">#</a></h3>
+<h3 id="44windows-编译问题未完成">4.4、windows 编译问题（未完成）<a hidden class="anchor" aria-hidden="true" href="#44windows-编译问题未完成">#</a></h3>
 <h4 id="441cuda-安装">4.4.1、CUDA 安装<a hidden class="anchor" aria-hidden="true" href="#441cuda-安装">#</a></h4>
 <p>安装对应的 CUDA 安装包，设置好环境变量。
 同时把 C:\Program Files\NVIDIA Corporation\NvToolsExt 目录复制到 C:\Program Files\NVIDIA GPU Computing Toolkit\NvToolsExt，否则 cmake 配置时会报 &ldquo;Cannot find nvToolsExt&rdquo;。</p>
@@ -378,7 +380,13 @@ if (!doNotTrack) {
 </span></span><span class="line"><span class="cl">D:<span class="se">\g</span>it_source<span class="se">\p</span>ytorch<span class="se">\o</span>ut<span class="se">\b</span>uild<span class="se">\x</span>64-Debug<span class="se">\L</span>azyNativeFunctions.cpp.obj : fatal error LNK1161: 导出规范无效
 </span></span></code></pre></div><p>发现是编译工具的问题<a href="https://github.com/pytorch/pytorch/issues/87957">fatal error LNK1161: invalid export specification</a>,
 我在 version 17.4.1 遇见，微软官方在 version 17.4.3 解决<a href="https://developercommunity.visualstudio.com/t/thread_local-causing-fatal-error-LNK1161/10199441">thread_local-causing-fatal-error-LNK1161</a>，于是直接升级到最新版 version 17.5.0，问题解决。</p>
-
+<h4 id="443-其他问题">4.4.3 其他问题<a hidden class="anchor" aria-hidden="true" href="#443-其他问题">#</a></h4>
+<p>还遇见如下问题，以后有空再看</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl">严重性	代码	说明	项目	文件	行	禁止显示状态
+</span></span><span class="line"><span class="cl">错误	LNK2019	无法解析的外部符号 <span class="s2">&#34;private: static unsigned short __cdecl caffe2::TypeMeta::addTypeMetaData&lt;class caffe2::Tensor&gt;(void)&#34;</span> <span class="o">(</span>??<span class="nv">$addTypeMetaData</span>@VTensor@caffe2@@@TypeMeta@caffe2@@CAGXZ<span class="o">)</span>，函数 <span class="s2">&#34;private: static unsigned short __cdecl caffe2::TypeMeta::_typeMetaData&lt;class caffe2::Tensor&gt;(void)&#34;</span> <span class="o">(</span>??<span class="nv">$_typeMetaData</span>@VTensor@caffe2@@@TypeMeta@caffe2@@CAGXZ<span class="o">)</span> 中引用了该符号 	D:<span class="se">\g</span>it_source<span class="se">\p</span>ytorch<span class="se">\o</span>ut<span class="se">\b</span>uild<span class="se">\x</span>64-Debug<span class="se">\p</span>ytorch	D:<span class="se">\g</span>it_source<span class="se">\p</span>ytorch<span class="se">\o</span>ut<span class="se">\b</span>uild<span class="se">\x</span>64-Debug<span class="se">\p</span>rint_core_object_sizes_gpu.obj	1	
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl">严重性	代码	说明	项目	文件	行	禁止显示状态
+</span></span><span class="line"><span class="cl">错误	LNK1120	<span class="m">1</span> 个无法解析的外部命令 	D:<span class="se">\g</span>it_source<span class="se">\p</span>ytorch<span class="se">\o</span>ut<span class="se">\b</span>uild<span class="se">\x</span>64-Debug<span class="se">\p</span>ytorch	D:<span class="se">\g</span>it_source<span class="se">\p</span>ytorch<span class="se">\o</span>ut<span class="se">\b</span>uild<span class="se">\x</span>64-Debug<span class="se">\b</span>in<span class="se">\D</span>ebug<span class="se">\p</span>rint_core_object_sizes_gpu.exe	1	
+</span></span></code></pre></div>
 
   </div>
 
