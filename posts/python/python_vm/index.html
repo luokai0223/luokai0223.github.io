@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="zh" dir="auto">
+
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>Python 代码编译运行过程（2）：Python 虚拟机 | K&#39;s blog</title>
+<meta name="keywords" content="Python3, Python 虚拟机, CPython">
+<meta name="description" content="简单总结一下 Python 代码编译运行过程">
+<meta name="author" content="luokai">
+<link rel="canonical" href="https://luokai.tech/posts/python/python_vm/">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.938a2ae405ffe5d9d39bf4fcbd809c6c18f56332c2c71b483718db4b263d5c97.css" integrity="sha256-k4oq5AX/5dnTm/T8vYCcbBj1YzLCxxtINxjbSyY9XJc=" rel="preload stylesheet" as="style">
+<script defer crossorigin="anonymous" src="/assets/js/highlight.f413e19d0714851f6474e7ee9632408e58ac146fbdbe62747134bea2fa3415e0.js" integrity="sha256-9BPhnQcUhR9kdOfuljJAjlisFG&#43;9vmJ0cTS&#43;ovo0FeA="
+    onload="hljs.initHighlightingOnLoad();"></script>
+<link rel="icon" href="https://luokai.tech/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://luokai.tech/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://luokai.tech/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://luokai.tech/apple-touch-icon.png">
+<link rel="mask-icon" href="https://luokai.tech/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --hljs-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-track {
+                background: 0 0;
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-thumb {
+                border-color: var(--theme);
+            }
+        }
+
+    </style>
+</noscript>
+<script type="application/javascript">
+var doNotTrack = false;
+if (!doNotTrack) {
+	(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	})(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+	ga('create', 'UA-67470195-2', 'auto');
+	
+	ga('send', 'pageview');
+}
+</script><meta property="og:title" content="Python 代码编译运行过程（2）：Python 虚拟机" />
+<meta property="og:description" content="简单总结一下 Python 代码编译运行过程" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://luokai.tech/posts/python/python_vm/" /><meta property="og:image" content="https://luokai.tech/%3Clink%20or%20path%20of%20image%20for%20opengraph,%20twitter-cards%3E"/><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-03-09T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-03-09T00:00:00+00:00" /><meta property="og:site_name" content="K&#39;s blog" />
+
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://luokai.tech/%3Clink%20or%20path%20of%20image%20for%20opengraph,%20twitter-cards%3E"/>
+
+<meta name="twitter:title" content="Python 代码编译运行过程（2）：Python 虚拟机"/>
+<meta name="twitter:description" content="简单总结一下 Python 代码编译运行过程"/>
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position":  1 ,
+      "name": "Posts",
+      "item": "https://luokai.tech/posts/"
+    }, 
+    {
+      "@type": "ListItem",
+      "position":  2 ,
+      "name": "Python 代码编译运行过程（2）：Python 虚拟机",
+      "item": "https://luokai.tech/posts/python/python_vm/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Python 代码编译运行过程（2）：Python 虚拟机",
+  "name": "Python 代码编译运行过程（2）：Python 虚拟机",
+  "description": "简单总结一下 Python 代码编译运行过程",
+  "keywords": [
+    "Python3", "Python 虚拟机", "CPython"
+  ],
+  "articleBody": "前言 阅读 Pytorch 源码时涉及到 Python 代码编译执行相关的内容，为了便于理解，简单学习了 Inside The Python Virtual Machine 的部分内容，本文内容主要来自于此，相关细节请参考原文。\nCode Objects Python 程序由代码块构成，交互模式下的每个命令、脚本文件都是代码块，当 Python 编译代码块时，都会生成 code object：\ndef fizzbuzz(n): if n % 3 == 0 and n % 5 == 0: return 'FizzBuzz' elif n % 3 == 0: return 'Fizz' elif n % 5 == 0: return 'Buzz' else: return str(n) # 打印代码对象内容 for attr in dir(fizzbuzz.__code__): if attr.startswith('co_'): print(f\"{attr}:\\t{getattr(fizzbuzz.__code__, attr)}\") # 反编译得到的字节码指令 import dis dis.dis(fizzbuzz) 上面代码的打印结果是：\n# ===================代码对象内容 co_argcount: 1 co_cellvars: () co_code: b'|\\x00d\\x01\\x16\\x00d\\x02k\\x02r\\x1c|\\x00d\\x03\\x16\\x00d\\x02k\\x02r\\x1cd\\x04S\\x00|\\x00d\\x01\\x16\\x00d\\x02k\\x02r,d\\x05S\\x00|\\x00d\\x03\\x16\\x00d\\x02k\\x02r",
+  "wordCount" : "547",
+  "inLanguage": "zh",
+  "datePublished": "2023-03-09T00:00:00Z",
+  "dateModified": "2023-03-09T00:00:00Z",
+  "author":{
+    "@type": "Person",
+    "name": "luokai"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://luokai.tech/posts/python/python_vm/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "K's blog",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://luokai.tech/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+
+<body class="" id="top">
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.body.classList.add('dark');
+    } else if (localStorage.getItem("pref-theme") === "light") {
+        document.body.classList.remove('dark')
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.body.classList.add('dark');
+    }
+
+</script>
+
+<header class="header">
+    <nav class="nav">
+        <div class="logo">
+            <a href="https://luokai.tech/" accesskey="h" title="K&#39;s blog (Alt + H)">K&#39;s blog</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" accesskey="t" title="(Alt + T)">
+                    <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu">
+            <li>
+                <a href="https://luokai.tech/categories" title="分类">
+                    <span>分类</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://luokai.tech/tags" title="标签">
+                    <span>标签</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://luokai.tech/search" title="搜索">
+                    <span>搜索</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://luokai.tech/archives" title="归档">
+                    <span>归档</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://luokai.tech/about/about" title="联系我">
+                    <span>联系我</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    <div class="breadcrumbs"><a href="https://luokai.tech/">主页</a>&nbsp;»&nbsp;<a href="https://luokai.tech/posts/">Posts</a></div>
+    <h1 class="post-title">
+      Python 代码编译运行过程（2）：Python 虚拟机
+    </h1>
+    <div class="post-description">
+      简单总结一下 Python 代码编译运行过程
+    </div>
+    <div class="post-meta"><span title='2023-03-09 00:00:00 +0000 UTC'>2023-09-09</span>&nbsp;·&nbsp;547 字&nbsp;·&nbsp;luokai
+
+</div>
+  </header> <aside id="toc-container" class="toc-container wide">
+    <div class="toc">
+        <details  open>
+            <summary accesskey="c" title="(Alt + C)">
+                <span class="details">目录</span>
+            </summary>
+
+            <div class="inner"><ul>
+                    <li>
+                        <a href="#%e5%89%8d%e8%a8%80" aria-label="前言">前言</a></li>
+                    <li>
+                        <a href="#code-objects" aria-label="Code Objects">Code Objects</a></li>
+                    <li>
+                        <a href="#frames-objects" aria-label="Frames Objects">Frames Objects</a></li>
+                    <li>
+                        <a href="#%e6%8c%87%e4%bb%a4%e6%89%a7%e8%a1%8c" aria-label="指令执行">指令执行</a>
+                    </li>
+                </ul>
+            </div>
+        </details>
+    </div>
+</aside>
+<script>
+    let activeElement;
+    let elements;
+    window.addEventListener('DOMContentLoaded', function (event) {
+        checkTocPosition();
+
+        elements = document.querySelectorAll('h1[id],h2[id],h3[id],h4[id],h5[id],h6[id]');
+         
+         activeElement = elements[0];
+         const id = encodeURI(activeElement.getAttribute('id')).toLowerCase();
+         document.querySelector(`.inner ul li a[href="#${id}"]`).classList.add('active');
+     }, false);
+
+    window.addEventListener('resize', function(event) {
+        checkTocPosition();
+    }, false);
+
+    window.addEventListener('scroll', () => {
+        
+        activeElement = Array.from(elements).find((element) => {
+            if ((getOffsetTop(element) - window.pageYOffset) > 0 && 
+                (getOffsetTop(element) - window.pageYOffset) < window.innerHeight/2) {
+                return element;
+            }
+        }) || activeElement
+
+        elements.forEach(element => {
+             const id = encodeURI(element.getAttribute('id')).toLowerCase();
+             if (element === activeElement){
+                 document.querySelector(`.inner ul li a[href="#${id}"]`).classList.add('active');
+             } else {
+                 document.querySelector(`.inner ul li a[href="#${id}"]`).classList.remove('active');
+             }
+         })
+     }, false);
+
+    const main = parseInt(getComputedStyle(document.body).getPropertyValue('--article-width'), 10);
+    const toc = parseInt(getComputedStyle(document.body).getPropertyValue('--toc-width'), 10);
+    const gap = parseInt(getComputedStyle(document.body).getPropertyValue('--gap'), 10);
+
+    function checkTocPosition() {
+        const width = document.body.scrollWidth;
+
+        if (width - main - (toc * 2) - (gap * 4) > 0) {
+            document.getElementById("toc-container").classList.add("wide");
+        } else {
+            document.getElementById("toc-container").classList.remove("wide");
+        }
+    }
+
+    function getOffsetTop(element) {
+        if (!element.getClientRects().length) {
+            return 0;
+        }
+        let rect = element.getBoundingClientRect();
+        let win = element.ownerDocument.defaultView;
+        return rect.top + win.pageYOffset;   
+    }
+</script>
+  <div class="post-content"><h2 id="前言">前言<a hidden class="anchor" aria-hidden="true" href="#前言">#</a></h2>
+<p><em>阅读 Pytorch 源码时涉及到 Python 代码编译执行相关的内容，为了便于理解，简单学习了 <a href="https://nanguage.gitbook.io/inside-python-vm-cn/">Inside The Python Virtual Machine</a> 的部分内容，本文内容主要来自于此，相关细节请参考原文。</em></p>
+<h2 id="code-objects">Code Objects<a hidden class="anchor" aria-hidden="true" href="#code-objects">#</a></h2>
+<p>Python 程序由代码块构成，交互模式下的每个命令、脚本文件都是代码块，当 Python 编译代码块时，都会生成 code object：</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">fizzbuzz</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="n">n</span> <span class="o">%</span> <span class="mi">3</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">n</span> <span class="o">%</span> <span class="mi">5</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span> 
+</span></span><span class="line"><span class="cl">        <span class="k">return</span> <span class="s1">&#39;FizzBuzz&#39;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">elif</span> <span class="n">n</span> <span class="o">%</span> <span class="mi">3</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span> 
+</span></span><span class="line"><span class="cl">        <span class="k">return</span> <span class="s1">&#39;Fizz&#39;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">elif</span> <span class="n">n</span> <span class="o">%</span> <span class="mi">5</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span> 
+</span></span><span class="line"><span class="cl">        <span class="k">return</span> <span class="s1">&#39;Buzz&#39;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">else</span><span class="p">:</span> 
+</span></span><span class="line"><span class="cl">        <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># 打印代码对象内容</span>
+</span></span><span class="line"><span class="cl"><span class="k">for</span> <span class="n">attr</span> <span class="ow">in</span> <span class="nb">dir</span><span class="p">(</span><span class="n">fizzbuzz</span><span class="o">.</span><span class="vm">__code__</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="n">attr</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;co_&#39;</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;</span><span class="si">{</span><span class="n">attr</span><span class="si">}</span><span class="s2">:</span><span class="se">\t</span><span class="si">{</span><span class="nb">getattr</span><span class="p">(</span><span class="n">fizzbuzz</span><span class="o">.</span><span class="vm">__code__</span><span class="p">,</span> <span class="n">attr</span><span class="p">)</span><span class="si">}</span><span class="s2">&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># 反编译得到的字节码指令</span>
+</span></span><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">dis</span>
+</span></span><span class="line"><span class="cl"><span class="n">dis</span><span class="o">.</span><span class="n">dis</span><span class="p">(</span><span class="n">fizzbuzz</span><span class="p">)</span>
+</span></span></code></pre></div><p>上面代码的打印结果是：</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-plaintext" data-lang="plaintext"><span class="line"><span class="cl"># ===================代码对象内容
+</span></span><span class="line"><span class="cl">co_argcount:    1
+</span></span><span class="line"><span class="cl">co_cellvars:    ()
+</span></span><span class="line"><span class="cl">co_code:        b&#39;|\x00d\x01\x16\x00d\x02k\x02r\x1c|\x00d\x03\x16\x00d\x02k\x02r\x1cd\x04S\x00|\x00d\x01\x16\x00d\x02k\x02r,d\x05S\x00|\x00d\x03\x16\x00d\x02k\x02r&lt;d\x06S\x00t\x00|\x00\x83\x01S\x00d\x00S\x00&#39;
+</span></span><span class="line"><span class="cl">co_consts:      (None, 3, 0, 5, &#39;FizzBuzz&#39;, &#39;Fizz&#39;, &#39;Buzz&#39;)
+</span></span><span class="line"><span class="cl">co_filename:    &lt;ipython-input-1-2a4d59ff6c50&gt;
+</span></span><span class="line"><span class="cl">co_firstlineno: 1
+</span></span><span class="line"><span class="cl">co_flags:       67
+</span></span><span class="line"><span class="cl">co_freevars:    ()
+</span></span><span class="line"><span class="cl">co_kwonlyargcount:      0
+</span></span><span class="line"><span class="cl">co_lnotab:      b&#39;\x00\x01\x18\x01\x04\x01\x0c\x01\x04\x01\x0c\x01\x04\x02&#39;
+</span></span><span class="line"><span class="cl">co_name:        fizzbuzz
+</span></span><span class="line"><span class="cl">co_names:       (&#39;str&#39;,)
+</span></span><span class="line"><span class="cl">co_nlocals:     1
+</span></span><span class="line"><span class="cl">co_posonlyargcount:     0
+</span></span><span class="line"><span class="cl">co_stacksize:   2
+</span></span><span class="line"><span class="cl">co_varnames:    (&#39;n&#39;,)
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"># ===================字节码指令
+</span></span><span class="line"><span class="cl">  2           0 LOAD_FAST                0 (n)
+</span></span><span class="line"><span class="cl">              2 LOAD_CONST               1 (3)
+</span></span><span class="line"><span class="cl">              4 BINARY_MODULO
+</span></span><span class="line"><span class="cl">              6 LOAD_CONST               2 (0)
+</span></span><span class="line"><span class="cl">              8 COMPARE_OP               2 (==)
+</span></span><span class="line"><span class="cl">             10 POP_JUMP_IF_FALSE       28
+</span></span><span class="line"><span class="cl">             12 LOAD_FAST                0 (n)
+</span></span><span class="line"><span class="cl">             14 LOAD_CONST               3 (5)
+</span></span><span class="line"><span class="cl">             16 BINARY_MODULO
+</span></span><span class="line"><span class="cl">             18 LOAD_CONST               2 (0)
+</span></span><span class="line"><span class="cl">             20 COMPARE_OP               2 (==)
+</span></span><span class="line"><span class="cl">             22 POP_JUMP_IF_FALSE       28
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">  3          24 LOAD_CONST               4 (&#39;FizzBuzz&#39;)
+</span></span><span class="line"><span class="cl">             26 RETURN_VALUE
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">  4     &gt;&gt;   28 LOAD_FAST                0 (n)
+</span></span><span class="line"><span class="cl">             30 LOAD_CONST               1 (3)
+</span></span><span class="line"><span class="cl">             32 BINARY_MODULO
+</span></span><span class="line"><span class="cl">             34 LOAD_CONST               2 (0)
+</span></span><span class="line"><span class="cl">             36 COMPARE_OP               2 (==)
+</span></span><span class="line"><span class="cl">             38 POP_JUMP_IF_FALSE       44
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">  5          40 LOAD_CONST               5 (&#39;Fizz&#39;)
+</span></span><span class="line"><span class="cl">             42 RETURN_VALUE
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">  6     &gt;&gt;   44 LOAD_FAST                0 (n)
+</span></span><span class="line"><span class="cl">             46 LOAD_CONST               3 (5)
+</span></span><span class="line"><span class="cl">             48 BINARY_MODULO
+</span></span><span class="line"><span class="cl">             50 LOAD_CONST               2 (0)
+</span></span><span class="line"><span class="cl">             52 COMPARE_OP               2 (==)
+</span></span><span class="line"><span class="cl">             54 POP_JUMP_IF_FALSE       60
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">  7          56 LOAD_CONST               6 (&#39;Buzz&#39;)
+</span></span><span class="line"><span class="cl">             58 RETURN_VALUE
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">  9     &gt;&gt;   60 LOAD_GLOBAL              0 (str)
+</span></span><span class="line"><span class="cl">             62 LOAD_FAST                0 (n)
+</span></span><span class="line"><span class="cl">             64 CALL_FUNCTION            1
+</span></span><span class="line"><span class="cl">             66 RETURN_VALUE
+</span></span><span class="line"><span class="cl">             68 LOAD_CONST               0 (None)
+</span></span><span class="line"><span class="cl">             70 RETURN_VALUE
+</span></span></code></pre></div><ul>
+<li>co_code：这些字节码指令序列中的每一个都由一个操作码（opcode）和一个参数（opatg）组成。 例如，<code>co.co_code[0]</code> 返回指令的第一个字节 <code>124</code>，该字节对应于 python 的 <code>LOAD_FAST</code> 操作码。使用dis.dis(co_code)即可以得到字节码指令。</li>
+<li>co_consts：常量列表，字节码里面的 LOAD_CONST 1(3)即是加载常量列表索引为1的值，即3。</li>
+<li>co_firstlineno：代码对象第一行行号。</li>
+<li>co_flag：该字段指示代码对象的种类。 例如，当代码对象是协程的对象时，该标志设置为 <code>0x0080</code>。 还有其他标志，例如 <code>CO_NESTED</code> 指示一个代码对象是否嵌套在另一个代码块内，<code>CO_VARARGS</code> 指示一个代码块是否具有变量自变量，等等。 这些标志会影响字节码执行期间求值循环的行为。</li>
+</ul>
+<h2 id="frames-objects">Frames Objects<a hidden class="anchor" aria-hidden="true" href="#frames-objects">#</a></h2>
+<p>code object 包含可执行的字节代码，但缺少执行此类代码所需的上下文信息。可以将 frame object 视为执行代码对象的容器，并且它引用了某些代码对象执行期间所需的数据和值</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="k">typedef</span> <span class="k">struct</span> <span class="nc">_frame</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="n">PyObject_VAR_HEAD</span>
+</span></span><span class="line"><span class="cl">    <span class="k">struct</span> <span class="nc">_frame</span> <span class="o">*</span><span class="n">f_back</span><span class="p">;</span>      <span class="cm">/* previous frame, or NULL
+</span></span></span><span class="line"><span class="cl"><span class="cm">                                 该字段是对在当前代码对象之前执行的代码对象所在 frame 的引用。
+</span></span></span><span class="line"><span class="cl"><span class="cm">                                 给定一组 frame 对象，这些 frame 的 f_back 字段一起组成一个 frame 栈结构，这些 frame 一直返回到初始 frame。
+</span></span></span><span class="line"><span class="cl"><span class="cm">                                 然后，初始 frame 在 f_back 字段的值为 NULL 。 这种隐式 frame 堆栈形成了我们称为调用堆栈的 frame。*/</span>
+</span></span><span class="line"><span class="cl">    <span class="n">PyCodeObject</span> <span class="o">*</span><span class="n">f_code</span><span class="p">;</span>       <span class="cm">/* code segment
+</span></span></span><span class="line"><span class="cl"><span class="cm">                                 该字段是对代码对象的引用。
+</span></span></span><span class="line"><span class="cl"><span class="cm">                                 此代码对象包含在该 frame 的上下文中执行的字节码。*/</span>
+</span></span><span class="line"><span class="cl">    <span class="n">PyObject</span> <span class="o">*</span><span class="n">f_builtins</span><span class="p">;</span>       <span class="cm">/* builtin symbol table (PyDictObject) 
+</span></span></span><span class="line"><span class="cl"><span class="cm">                                 这是对内置名称空间的引用。 该名称空间包含诸如 print，enumerate 等名称及其对应的值。*/</span>
+</span></span><span class="line"><span class="cl">    <span class="n">PyObject</span> <span class="o">*</span><span class="n">f_globals</span><span class="p">;</span>        <span class="cm">/* global symbol table (PyDictObject) 这是对代码对象的全局名称空间的引用。*/</span>
+</span></span><span class="line"><span class="cl">    <span class="n">PyObject</span> <span class="o">*</span><span class="n">f_locals</span><span class="p">;</span>         <span class="cm">/* local symbol table (any mapping) 
+</span></span></span><span class="line"><span class="cl"><span class="cm">                                 这是对代码对象的局部名称空间的引用。 
+</span></span></span><span class="line"><span class="cl"><span class="cm">                                 如前所述，这些名称已在函数范围内定义。 
+</span></span></span><span class="line"><span class="cl"><span class="cm">                                 当我们讨论 f_localplus 字段时，我们将看到 python 在使用局部定义的名称时所做的优化。*/</span>
+</span></span><span class="line"><span class="cl">    <span class="n">PyObject</span> <span class="o">**</span><span class="n">f_valuestack</span><span class="p">;</span>    <span class="cm">/* points after the last local 
+</span></span></span><span class="line"><span class="cl"><span class="cm">                                 这是对 frame 求值堆栈的引用。 
+</span></span></span><span class="line"><span class="cl"><span class="cm">                                 回想一下，Python 虚拟机是基于堆栈的虚拟机，因此在对字节码进行求值期间，将从堆栈的顶部读取值，并将字节码求值的结果存储在堆栈的顶部。 
+</span></span></span><span class="line"><span class="cl"><span class="cm">                                 该字段是在代码对象执行期间使用的堆栈。 
+</span></span></span><span class="line"><span class="cl"><span class="cm">                                 frame 代码对象的堆栈大小提供了此数据结构可以扩展到的最大深度。*/</span>
+</span></span><span class="line"><span class="cl">    <span class="cm">/* Next free slot in f_valuestack.  Frame creation sets to f_valuestack.
+</span></span></span><span class="line"><span class="cl"><span class="cm">       Frame evaluation usually NULLs it, but a frame that yields sets it
+</span></span></span><span class="line"><span class="cl"><span class="cm">       to the current stack top. */</span>
+</span></span><span class="line"><span class="cl">    <span class="n">PyObject</span> <span class="o">**</span><span class="n">f_stacktop</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">PyObject</span> <span class="o">*</span><span class="n">f_trace</span><span class="p">;</span>          <span class="cm">/* Trace function */</span>
+</span></span><span class="line"><span class="cl">    <span class="kt">char</span> <span class="n">f_trace_lines</span><span class="p">;</span>         <span class="cm">/* Emit per-line trace events? */</span>
+</span></span><span class="line"><span class="cl">    <span class="kt">char</span> <span class="n">f_trace_opcodes</span><span class="p">;</span>       <span class="cm">/* Emit per-opcode trace events? */</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="cm">/* Borrowed reference to a generator, or NULL */</span>
+</span></span><span class="line"><span class="cl">    <span class="n">PyObject</span> <span class="o">*</span><span class="n">f_gen</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="kt">int</span> <span class="n">f_lasti</span><span class="p">;</span>                <span class="cm">/* Last instruction if called */</span>
+</span></span><span class="line"><span class="cl">    <span class="cm">/* Call PyFrame_GetLineNumber() instead of reading this field
+</span></span></span><span class="line"><span class="cl"><span class="cm">       directly.  As of 2.3 f_lineno is only valid when tracing is
+</span></span></span><span class="line"><span class="cl"><span class="cm">       active (i.e. when f_trace is set).  At other times we use
+</span></span></span><span class="line"><span class="cl"><span class="cm">       PyCode_Addr2Line to calculate the line from the current
+</span></span></span><span class="line"><span class="cl"><span class="cm">       bytecode index. */</span>
+</span></span><span class="line"><span class="cl">    <span class="kt">int</span> <span class="n">f_lineno</span><span class="p">;</span>               <span class="cm">/* Current line number */</span>
+</span></span><span class="line"><span class="cl">    <span class="kt">int</span> <span class="n">f_iblock</span><span class="p">;</span>               <span class="cm">/* index in f_blockstack */</span>
+</span></span><span class="line"><span class="cl">    <span class="kt">char</span> <span class="n">f_executing</span><span class="p">;</span>           <span class="cm">/* whether the frame is still executing */</span>
+</span></span><span class="line"><span class="cl">    <span class="n">PyTryBlock</span> <span class="n">f_blockstack</span><span class="p">[</span><span class="n">CO_MAXBLOCKS</span><span class="p">];</span> <span class="cm">/* for try and loop blocks */</span>
+</span></span><span class="line"><span class="cl">    <span class="n">PyObject</span> <span class="o">*</span><span class="n">f_localsplus</span><span class="p">[</span><span class="mi">1</span><span class="p">];</span>  <span class="cm">/* locals+stack, dynamically sized */</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span> <span class="n">PyFrameObject</span><span class="p">;</span>
+</span></span></code></pre></div><h2 id="指令执行">指令执行<a hidden class="anchor" aria-hidden="true" href="#指令执行">#</a></h2>
+<p>frame 对象执行情况可以参考下图</p>
+<p><img loading="lazy" src="https://raw.githubusercontent.com/luokai0223/blog_img/main/python_vm/1678366804568.png" alt="1678366804568"  />
+</p>
+<p>frame 中的指令最终由 _PyEval_EvalFrameDefault 函数执行，函数内部主要是 switch-case 逻辑，执行对应的指令</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="p">...</span> 
+</span></span><span class="line"><span class="cl">   <span class="k">switch</span> <span class="p">(</span><span class="n">opcode</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="k">case</span> <span class="nf">TARGET</span><span class="p">(</span><span class="n">LOAD_CONST</span><span class="p">)</span><span class="o">:</span> <span class="p">{</span>      <span class="cm">/* 加载常量 */</span>
+</span></span><span class="line"><span class="cl">            <span class="p">...</span>
+</span></span><span class="line"><span class="cl">        <span class="p">}</span>
+</span></span><span class="line"><span class="cl"> <span class="p">...</span>
+</span></span></code></pre></div>
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+    </ul>
+<nav class="paginav">
+  <a class="next" href="https://luokai.tech/posts/python/python_compile/">
+    <span class="title">下一页 »</span>
+    <br>
+    <span>Python 代码编译运行过程（1）：编译过程</span>
+  </a>
+</nav>
+
+  </footer>
+</article>
+    </main>
+    
+<footer class="footer">
+    <span>&copy; 2023 <a href="https://luokai.tech/">K&#39;s blog</a></span>
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" aria-label="go to top" title="Go to Top (Alt + G)" class="top-link" id="top-link" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentColor">
+        <path d="M12 6H0l6-6z" />
+    </svg>
+</a>
+
+<script>
+    let menu = document.getElementById('menu')
+    if (menu) {
+        menu.scrollLeft = localStorage.getItem("menu-scroll-position");
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var mybutton = document.getElementById("top-link");
+    window.onscroll = function () {
+        if (document.body.scrollTop > 800 || document.documentElement.scrollTop > 800) {
+            mybutton.style.visibility = "visible";
+            mybutton.style.opacity = "1";
+        } else {
+            mybutton.style.visibility = "hidden";
+            mybutton.style.opacity = "0";
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        if (document.body.className.includes("dark")) {
+            document.body.classList.remove('dark');
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            document.body.classList.add('dark');
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+<script>
+    document.querySelectorAll('pre > code').forEach((codeblock) => {
+        const container = codeblock.parentNode.parentNode;
+
+        const copybutton = document.createElement('button');
+        copybutton.classList.add('copy-code');
+        copybutton.innerHTML = '复制';
+
+        function copyingDone() {
+            copybutton.innerHTML = '已复制！';
+            setTimeout(() => {
+                copybutton.innerHTML = '复制';
+            }, 2000);
+        }
+
+        copybutton.addEventListener('click', (cb) => {
+            if ('clipboard' in navigator) {
+                navigator.clipboard.writeText(codeblock.textContent);
+                copyingDone();
+                return;
+            }
+
+            const range = document.createRange();
+            range.selectNodeContents(codeblock);
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+            try {
+                document.execCommand('copy');
+                copyingDone();
+            } catch (e) { };
+            selection.removeRange(range);
+        });
+
+        if (container.classList.contains("highlight")) {
+            container.appendChild(copybutton);
+        } else if (container.parentNode.firstChild == container) {
+            
+        } else if (codeblock.parentNode.parentNode.parentNode.parentNode.parentNode.nodeName == "TABLE") {
+            
+            codeblock.parentNode.parentNode.parentNode.parentNode.parentNode.appendChild(copybutton);
+        } else {
+            
+            codeblock.parentNode.appendChild(copybutton);
+        }
+    });
+</script>
+</body>
+
+</html>

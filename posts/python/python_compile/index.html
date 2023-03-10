@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="zh" dir="auto">
+
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>Python 代码编译运行过程（1）：编译过程 | K&#39;s blog</title>
+<meta name="keywords" content="Python3, Python 编译, CPython">
+<meta name="description" content="简单总结一下 Python 代码编译运行过程">
+<meta name="author" content="luokai">
+<link rel="canonical" href="https://luokai.tech/posts/python/python_compile/">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.938a2ae405ffe5d9d39bf4fcbd809c6c18f56332c2c71b483718db4b263d5c97.css" integrity="sha256-k4oq5AX/5dnTm/T8vYCcbBj1YzLCxxtINxjbSyY9XJc=" rel="preload stylesheet" as="style">
+<script defer crossorigin="anonymous" src="/assets/js/highlight.f413e19d0714851f6474e7ee9632408e58ac146fbdbe62747134bea2fa3415e0.js" integrity="sha256-9BPhnQcUhR9kdOfuljJAjlisFG&#43;9vmJ0cTS&#43;ovo0FeA="
+    onload="hljs.initHighlightingOnLoad();"></script>
+<link rel="icon" href="https://luokai.tech/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://luokai.tech/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://luokai.tech/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://luokai.tech/apple-touch-icon.png">
+<link rel="mask-icon" href="https://luokai.tech/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --hljs-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-track {
+                background: 0 0;
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-thumb {
+                border-color: var(--theme);
+            }
+        }
+
+    </style>
+</noscript>
+<script type="application/javascript">
+var doNotTrack = false;
+if (!doNotTrack) {
+	(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	})(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+	ga('create', 'UA-67470195-2', 'auto');
+	
+	ga('send', 'pageview');
+}
+</script><meta property="og:title" content="Python 代码编译运行过程（1）：编译过程" />
+<meta property="og:description" content="简单总结一下 Python 代码编译运行过程" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://luokai.tech/posts/python/python_compile/" /><meta property="og:image" content="https://luokai.tech/%3Clink%20or%20path%20of%20image%20for%20opengraph,%20twitter-cards%3E"/><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-03-08T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-03-08T00:00:00+00:00" /><meta property="og:site_name" content="K&#39;s blog" />
+
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://luokai.tech/%3Clink%20or%20path%20of%20image%20for%20opengraph,%20twitter-cards%3E"/>
+
+<meta name="twitter:title" content="Python 代码编译运行过程（1）：编译过程"/>
+<meta name="twitter:description" content="简单总结一下 Python 代码编译运行过程"/>
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position":  1 ,
+      "name": "Posts",
+      "item": "https://luokai.tech/posts/"
+    }, 
+    {
+      "@type": "ListItem",
+      "position":  2 ,
+      "name": "Python 代码编译运行过程（1）：编译过程",
+      "item": "https://luokai.tech/posts/python/python_compile/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Python 代码编译运行过程（1）：编译过程",
+  "name": "Python 代码编译运行过程（1）：编译过程",
+  "description": "简单总结一下 Python 代码编译运行过程",
+  "keywords": [
+    "Python3", "Python 编译", "CPython"
+  ],
+  "articleBody": "前言 阅读 Pytorch 源码时涉及到 Python 代码编译执行相关的内容，为了便于理解，简单学习了 Inside The Python Virtual Machine 的部分内容，本文内容主要来自于此，相关细节请参考原文。\n简单总结 Python 程序编译过程的步骤\n将源代码转化为 AST（抽象语法树， abstract syntax tree） 生成符号表（symbol table）。 从 AST 生成 code object。 源代码转化 AST 每当从命令行执行 Python 模块时，都会将模块文件的内容分解为一个个合法的 Python tokens 或者发现语法错误时进行报错。\n# ==== test.py ==== a = 1 b = 1 c = a + b print(c) # ==== test.py ==== from tokenize import tokenize f = open(\"./test.py\", 'rb') for t in tokenize(f.readline): print(t) 打印结果如下：\nTokenInfo(type=62 (ENCODING), string='utf-8', start=(0, 0), end=(0, 0), line='')\rTokenInfo(type=1 (NAME), string='a', start=(1, 0), end=(1, 1), line='a = 1\\r\\n')\rTokenInfo(type=54 (OP), string='=', start=(1, 2), end=(1, 3), line='a = 1\\r\\n')\rTokenInfo(type=2 (NUMBER), string='1', start=(1, 4), end=(1, 5), line='a = 1\\r\\n')\rTokenInfo(type=4 (NEWLINE), string='\\r\\n', start=(1, 5), end=(1, 7), line='a = 1\\r\\n')\rTokenInfo(type=1 (NAME), string='b', start=(2, 0), end=(2, 1), line='b = 1\\r\\n')\rTokenInfo(type=54 (OP), string='=', start=(2, 2), end=(2, 3), line='b = 1\\r\\n')\rTokenInfo(type=2 (NUMBER), string='1', start=(2, 4), end=(2, 5), line='b = 1\\r\\n')\rTokenInfo(type=4 (NEWLINE), string='\\r\\n', start=(2, 5), end=(2, 7), line='b = 1\\r\\n')\rTokenInfo(type=1 (NAME), string='c', start=(3, 0), end=(3, 1), line='c = a + b\\r\\n')\rTokenInfo(type=54 (OP), string='=', start=(3, 2), end=(3, 3), line='c = a + b\\r\\n')\rTokenInfo(type=1 (NAME), string='a', start=(3, 4), end=(3, 5), line='c = a + b\\r\\n')\rTokenInfo(type=54 (OP), string='+', start=(3, 6), end=(3, 7), line='c = a + b\\r\\n')\rTokenInfo(type=1 (NAME), string='b', start=(3, 8), end=(3, 9), line='c = a + b\\r\\n')\rTokenInfo(type=4 (NEWLINE), string='\\r\\n', start=(3, 9), end=(3, 11), line='c = a + b\\r\\n')\rTokenInfo(type=1 (NAME), string='print', start=(4, 0), end=(4, 5), line='print(c)')\rTokenInfo(type=54 (OP), string='(', start=(4, 5), end=(4, 6), line='print(c)')\rTokenInfo(type=1 (NAME), string='c', start=(4, 6), end=(4, 7), line='print(c)')\rTokenInfo(type=54 (OP), string=')', start=(4, 7), end=(4, 8), line='print(c)')\rTokenInfo(type=4 (NEWLINE), string='', start=(4, 8), end=(4, 9), line='')\rTokenInfo(type=0 (ENDMARKER), string='', start=(5, 0), end=(5, 0), line='') CPython 会对 tokenize 结果生成一个 parser tree，然后将其转换成 AST\nimport ast code_str = ''' def hello_world(): return 'hello world' ''' node = ast.parse(code_str, mode='exec') ast.dump(node) 输出\n\"Module(body=[FunctionDef(name='hello_world', args=arguments(posonlyargs=[], args=[], vararg=None, kwonlyargs=[], kw_defaults=[], kwarg=None, defaults=[]), body=[Return(value=Constant(value='hello world', kind=None))], decorator_list=[], returns=None, type_comment=None)], type_ignores=[])\" 构建符号表 可以看出 AST 不包含变量的作用域信息，符号表是一个代码块（code block）与上下文（context）中所使用到的名字的集合。符号表的构建过程涉及到对一个代码块中所包含的所有名字以及对这些名字正确作用域赋值的分析。\n从 AST 生成 code object 根据 AST 以及符号表中的信息来生成 code object：\nAST 被转化为 python 字节码指令的基础块（basic blocks），基础指令块以及块之间的路径被隐式的表示为图（graph）结构，也称之为控制流图（control flow graph，CFG） 以后缀深度优先遍历的方式将前一步生成的控制流图扁平化（flatten）。图被扁平化之后，跳转偏移量被计算出来作为 jump 指令的参数。然后再根据这些指令生成 code object CFG 生成 下面的函数转化为 CFG 的结果\ndef fizzbuzz(n): if n % 3 == 0 and n % 5 == 0: return 'FizzBuzz' elif n % 3 == 0: return 'Fizz' elif n % 5 == 0: return 'Buzz' else: return str(n) 转化为的 CFG 图大致表示如下\nblock1 对应的字节码大致为\nLOAD_FAST LOAD_CONST BINARY_MODULO\rLOAD_CONST COMPARE_OP JUMP_IF_FALSE_OR_POP LOAD_FAST LOAD_CONST BINARY_MODULO\rLOAD_CONST COMPARE_OP block2\nPOP_JUMP_IF_FALSE\rLOAD_CONST\rRETURN_VALUE\rJUMP_FORWARD block3\nLOAD_FAST\rLOAD_CONST\rBINARY_MODULO\rLOAD_CONST\rCOMPARE_OP\rPOP_JUMP_IF_FALSE\rLOAD_CONST\rRETURN_VALUE\rJUMP_FORWARD block5\nLOAD_GLOBAL\rLOAD_FAST\rCALL_FUNCTION\rRETURN_VALUE CFG 数据结构图如下 compiler 结构体，每个被编译的模块，对应一个被初始化的 compiler 数据结构。\nstruct compiler { PyObject *c_filename; struct symtable *c_st; /*指向之前生成的符号表*/ PyFutureFeatures *c_future; /* pointer to module's __future__ */ PyCompilerFlags *c_flags; int c_optimize; /* optimization level */ int c_interactive; /* true if in interactive mode */ int c_nestlevel; struct compiler_unit *u; /* 一个到 compiler unit 结构体的引用。 这个结构体封装了与一个 code block 进行交互所需的信息。 本字段指向目前正在处理的 code block 所对应的 compiler unit */ PyObject *c_stack; /* 一个到 compiler unit 栈的引用。 当一个 code block 由多个 code block 所组成时，这个字段负责当遇到一个新的 block 时 compiler unit 结构体的储存与恢复。 当进入一个新的 code block 时，一个新的作用域被创建，然后 compiler_enter_scope() 会将当前的 compiler unit （ *u ）push 到栈中。同时 *c_stack 创建一个新的 compiler unit 对象并将其设置为当前compiler unit。 当离开一个 block 的时候，*c_stack 会根据复原状态进行弹出。 */ PyArena *c_arena; /* pointer to memory allocation arena */ }; 当 AST 被遍历，其中每一个 code block 对应的 compiler_unit 数据结构会被生成，compiler_unit 结构体持有生成一个 code block 对应的字节码指令所需的信息。\nstruct compiler_unit { PySTEntryObject *u_ste; /*到一个被编译的 code block 中的符号表项的引用*/ PyObject *u_name; PyObject *u_qualname; /* dot-separated qualified name (lazy) */ int u_scope_type; /* The following fields are dicts that map objects to the index of them in co_XXX. The index is used as the argument for opcodes that refer to those collections. */ PyObject *u_consts; /* all constants */ PyObject *u_names; /* all names */ PyObject *u_varnames; /* local variables */ PyObject *u_cellvars; /* cell variables */ PyObject *u_freevars; /* free variables */ PyObject *u_private; /* for private name mangling */ Py_ssize_t u_argcount; /* number of arguments for block */ Py_ssize_t u_kwonlyargcount; /* number of keyword only arguments for block */ /* Pointer to the most recently allocated block. By following b_list members, you can reach all early allocated blocks. */ basicblock *u_blocks; /*用于引用那些组成被编译的 code block 的基础块*/ basicblock *u_curblock; /* pointer to current block 用于引用那些组成被编译的 code block 的基础块 */ int u_nfblocks; struct fblockinfo u_fblock[CO_MAXBLOCKS]; int u_firstlineno; /* the first lineno of the block */ int u_lineno; /* the lineno for the current stmt */ int u_col_offset; /* the offset of the current stmt */ int u_lineno_set; /* boolean to indicate whether instr has been generated with current lineno */ }; 组成 code block 的不同节点在编译过程中会被遍历，根据一个节点类型的不同，判断是否能够起始一个 basic block，不能时会添加新指令到 basic block，能时会创建含有 node 指令的新 basic block，能够起始一个 basic block 的节点类型包括但不限于：\n函数节点 跳转目标 异常处理 布尔运算等 一个 basic block 是一个具有单一入口与多个出口的指令序列\ntypedef struct basicblock_ { /* Each basicblock in a compilation unit is linked via b_list in the reverse order that the block are allocated. b_list points to the next block, not to be confused with b_next, which is next by control flow. */ struct basicblock_ *b_list; /* number of instructions used */ int b_iused; /* length of instruction array (b_instr) */ int b_ialloc; /* pointer to an array of instructions, initially NULL */ struct instr *b_instr; /* If b_next is non-NULL, it is a pointer to the next block reached by normal control flow. 引用到一个指令结构体的数组，一个指令结构体对应于一条字节码指令，字节码指令的编号可在头文件 Include/opcode.h 中找到 */ struct basicblock_ *b_next; /* b_seen is used to perform a DFS of basicblocks. */ unsigned b_seen : 1; /* b_return is true if a RETURN_VALUE opcode is inserted. */ unsigned b_return : 1; /* depth of stack upon entry of block, computed by stackdepth() */ int b_startdepth; /* instruction offset for block, computed by assemble_jump_offsets() */ int b_offset; } basicblock; 指令结构体 instr\nstruct instr { unsigned i_jabs : 1; // 绝对跳转 jump absolute unsigned i_jrel : 1; // 相对跳转 jump relative unsigned char i_opcode; int i_oparg; struct basicblock_ *i_target; /* target block (if jump instruction) */ int i_lineno; }; 汇编 basic blocks 一旦 CFG 被生成，basic blocks 包含了字节码指令，但目前这些 blocks 还不是线性排列的。 跳转指令的目标仍是 basic block 而不是指令流中的绝对偏移量。 assemble 函数将会把 CFG 进行线性排列并生成 code object。 assemble以“后序深度优先（post-order deep first）”的方式遍历 CFG 图，以对它进行扁平化。后序遍历指的是在遍历时先访问所有的子节点再访问根节点 在对一个图进行后序深度优先遍历时，我们首先会递归地访问一个根结点的左子节点，然后是右子节点，然后才是这个根节点自己。比如以上面这个图结构作为例子，当我们以后序深度优先遍历对它进行扁平化的时候，对节点的访问顺序是：H -\u003e D -\u003e I -\u003e J -\u003e E -\u003e B -\u003e K -\u003e L -\u003e F -\u003e G -\u003e C -\u003e A 。如果是前序（pre-order）遍历的话：A -\u003e B -\u003e D -\u003e H -\u003e E -\u003e I -\u003e J -\u003e C -\u003e F -\u003e K -\u003e L -\u003e G 。而如果是中序（in-order）遍历：H -\u003e D -\u003e B -\u003e I -\u003e E -\u003e J -\u003e A -\u003e K -\u003e L -\u003e F -\u003e C -\u003e G 。 上面fizzbuzz 函数的 CFG，如果对它进行后序遍历，顺序是：block5 -\u003e block4 -\u003e block3 -\u003e block2 -\u003e block1。 当 CFG 被扁平化以后，按照指令字节数计算扁平化图的跳转指令的跳转偏移量。 当字节码生成完毕，code object 对象就可以根据这些字节码以及符号表中的信息进行生成，code object 对象返回给调用函数的时候，整个编译过程就在此结束了。\n",
+  "wordCount" : "1077",
+  "inLanguage": "zh",
+  "datePublished": "2023-03-08T00:00:00Z",
+  "dateModified": "2023-03-08T00:00:00Z",
+  "author":{
+    "@type": "Person",
+    "name": "luokai"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://luokai.tech/posts/python/python_compile/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "K's blog",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://luokai.tech/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+
+<body class="" id="top">
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.body.classList.add('dark');
+    } else if (localStorage.getItem("pref-theme") === "light") {
+        document.body.classList.remove('dark')
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.body.classList.add('dark');
+    }
+
+</script>
+
+<header class="header">
+    <nav class="nav">
+        <div class="logo">
+            <a href="https://luokai.tech/" accesskey="h" title="K&#39;s blog (Alt + H)">K&#39;s blog</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" accesskey="t" title="(Alt + T)">
+                    <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu">
+            <li>
+                <a href="https://luokai.tech/categories" title="分类">
+                    <span>分类</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://luokai.tech/tags" title="标签">
+                    <span>标签</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://luokai.tech/search" title="搜索">
+                    <span>搜索</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://luokai.tech/archives" title="归档">
+                    <span>归档</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://luokai.tech/about/about" title="联系我">
+                    <span>联系我</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    <div class="breadcrumbs"><a href="https://luokai.tech/">主页</a>&nbsp;»&nbsp;<a href="https://luokai.tech/posts/">Posts</a></div>
+    <h1 class="post-title">
+      Python 代码编译运行过程（1）：编译过程
+    </h1>
+    <div class="post-description">
+      简单总结一下 Python 代码编译运行过程
+    </div>
+    <div class="post-meta"><span title='2023-03-08 00:00:00 +0000 UTC'>2023-08-08</span>&nbsp;·&nbsp;1077 字&nbsp;·&nbsp;luokai
+
+</div>
+  </header> <aside id="toc-container" class="toc-container wide">
+    <div class="toc">
+        <details  open>
+            <summary accesskey="c" title="(Alt + C)">
+                <span class="details">目录</span>
+            </summary>
+
+            <div class="inner"><ul>
+                    <li>
+                        <a href="#%e5%89%8d%e8%a8%80" aria-label="前言">前言</a><ul>
+                            
+                    <li>
+                        <a href="#%e6%ba%90%e4%bb%a3%e7%a0%81%e8%bd%ac%e5%8c%96-ast" aria-label="源代码转化 AST">源代码转化 AST</a></li>
+                    <li>
+                        <a href="#%e6%9e%84%e5%bb%ba%e7%ac%a6%e5%8f%b7%e8%a1%a8" aria-label="构建符号表">构建符号表</a></li>
+                    <li>
+                        <a href="#%e4%bb%8e-ast-%e7%94%9f%e6%88%90-code-object" aria-label="从 AST 生成 code object">从 AST 生成 code object</a><ul>
+                            
+                    <li>
+                        <a href="#cfg-%e7%94%9f%e6%88%90" aria-label="CFG 生成">CFG 生成</a></li>
+                    <li>
+                        <a href="#%e6%b1%87%e7%bc%96-basic-blocks" aria-label="汇编 basic blocks">汇编 basic blocks</a>
+                    </li>
+                </ul>
+                </li>
+                </ul>
+                </li>
+                </ul>
+            </div>
+        </details>
+    </div>
+</aside>
+<script>
+    let activeElement;
+    let elements;
+    window.addEventListener('DOMContentLoaded', function (event) {
+        checkTocPosition();
+
+        elements = document.querySelectorAll('h1[id],h2[id],h3[id],h4[id],h5[id],h6[id]');
+         
+         activeElement = elements[0];
+         const id = encodeURI(activeElement.getAttribute('id')).toLowerCase();
+         document.querySelector(`.inner ul li a[href="#${id}"]`).classList.add('active');
+     }, false);
+
+    window.addEventListener('resize', function(event) {
+        checkTocPosition();
+    }, false);
+
+    window.addEventListener('scroll', () => {
+        
+        activeElement = Array.from(elements).find((element) => {
+            if ((getOffsetTop(element) - window.pageYOffset) > 0 && 
+                (getOffsetTop(element) - window.pageYOffset) < window.innerHeight/2) {
+                return element;
+            }
+        }) || activeElement
+
+        elements.forEach(element => {
+             const id = encodeURI(element.getAttribute('id')).toLowerCase();
+             if (element === activeElement){
+                 document.querySelector(`.inner ul li a[href="#${id}"]`).classList.add('active');
+             } else {
+                 document.querySelector(`.inner ul li a[href="#${id}"]`).classList.remove('active');
+             }
+         })
+     }, false);
+
+    const main = parseInt(getComputedStyle(document.body).getPropertyValue('--article-width'), 10);
+    const toc = parseInt(getComputedStyle(document.body).getPropertyValue('--toc-width'), 10);
+    const gap = parseInt(getComputedStyle(document.body).getPropertyValue('--gap'), 10);
+
+    function checkTocPosition() {
+        const width = document.body.scrollWidth;
+
+        if (width - main - (toc * 2) - (gap * 4) > 0) {
+            document.getElementById("toc-container").classList.add("wide");
+        } else {
+            document.getElementById("toc-container").classList.remove("wide");
+        }
+    }
+
+    function getOffsetTop(element) {
+        if (!element.getClientRects().length) {
+            return 0;
+        }
+        let rect = element.getBoundingClientRect();
+        let win = element.ownerDocument.defaultView;
+        return rect.top + win.pageYOffset;   
+    }
+</script>
+  <div class="post-content"><h2 id="前言">前言<a hidden class="anchor" aria-hidden="true" href="#前言">#</a></h2>
+<p><em>阅读 Pytorch 源码时涉及到 Python 代码编译执行相关的内容，为了便于理解，简单学习了 <a href="https://nanguage.gitbook.io/inside-python-vm-cn/">Inside The Python Virtual Machine</a> 的部分内容，本文内容主要来自于此，相关细节请参考原文。</em></p>
+<p>简单总结 Python 程序编译过程的步骤</p>
+<ol>
+<li>将源代码转化为 AST（抽象语法树， abstract syntax tree）</li>
+<li>生成符号表（symbol table）。</li>
+<li>从 AST 生成 code object。</li>
+</ol>
+<h3 id="源代码转化-ast">源代码转化 AST<a hidden class="anchor" aria-hidden="true" href="#源代码转化-ast">#</a></h3>
+<p>每当从命令行执行 Python 模块时，都会将模块文件的内容分解为一个个合法的 Python tokens 或者发现语法错误时进行报错。</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="c1"># ==== test.py ====</span>
+</span></span><span class="line"><span class="cl"><span class="n">a</span> <span class="o">=</span> <span class="mi">1</span>
+</span></span><span class="line"><span class="cl"><span class="n">b</span> <span class="o">=</span> <span class="mi">1</span>
+</span></span><span class="line"><span class="cl"><span class="n">c</span> <span class="o">=</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># ==== test.py ====</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kn">from</span> <span class="nn">tokenize</span> <span class="kn">import</span> <span class="n">tokenize</span>
+</span></span><span class="line"><span class="cl"><span class="n">f</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&#34;./test.py&#34;</span><span class="p">,</span> <span class="s1">&#39;rb&#39;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">tokenize</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">readline</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="nb">print</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
+</span></span></code></pre></div><p>打印结果如下：</p>
+<pre tabindex="0"><code>TokenInfo(type=62 (ENCODING), string=&#39;utf-8&#39;, start=(0, 0), end=(0, 0), line=&#39;&#39;)
+TokenInfo(type=1 (NAME), string=&#39;a&#39;, start=(1, 0), end=(1, 1), line=&#39;a = 1\r\n&#39;)
+TokenInfo(type=54 (OP), string=&#39;=&#39;, start=(1, 2), end=(1, 3), line=&#39;a = 1\r\n&#39;)
+TokenInfo(type=2 (NUMBER), string=&#39;1&#39;, start=(1, 4), end=(1, 5), line=&#39;a = 1\r\n&#39;)
+TokenInfo(type=4 (NEWLINE), string=&#39;\r\n&#39;, start=(1, 5), end=(1, 7), line=&#39;a = 1\r\n&#39;)
+TokenInfo(type=1 (NAME), string=&#39;b&#39;, start=(2, 0), end=(2, 1), line=&#39;b = 1\r\n&#39;)
+TokenInfo(type=54 (OP), string=&#39;=&#39;, start=(2, 2), end=(2, 3), line=&#39;b = 1\r\n&#39;)
+TokenInfo(type=2 (NUMBER), string=&#39;1&#39;, start=(2, 4), end=(2, 5), line=&#39;b = 1\r\n&#39;)
+TokenInfo(type=4 (NEWLINE), string=&#39;\r\n&#39;, start=(2, 5), end=(2, 7), line=&#39;b = 1\r\n&#39;)
+TokenInfo(type=1 (NAME), string=&#39;c&#39;, start=(3, 0), end=(3, 1), line=&#39;c = a + b\r\n&#39;)
+TokenInfo(type=54 (OP), string=&#39;=&#39;, start=(3, 2), end=(3, 3), line=&#39;c = a + b\r\n&#39;)
+TokenInfo(type=1 (NAME), string=&#39;a&#39;, start=(3, 4), end=(3, 5), line=&#39;c = a + b\r\n&#39;)
+TokenInfo(type=54 (OP), string=&#39;+&#39;, start=(3, 6), end=(3, 7), line=&#39;c = a + b\r\n&#39;)
+TokenInfo(type=1 (NAME), string=&#39;b&#39;, start=(3, 8), end=(3, 9), line=&#39;c = a + b\r\n&#39;)
+TokenInfo(type=4 (NEWLINE), string=&#39;\r\n&#39;, start=(3, 9), end=(3, 11), line=&#39;c = a + b\r\n&#39;)
+TokenInfo(type=1 (NAME), string=&#39;print&#39;, start=(4, 0), end=(4, 5), line=&#39;print(c)&#39;)
+TokenInfo(type=54 (OP), string=&#39;(&#39;, start=(4, 5), end=(4, 6), line=&#39;print(c)&#39;)
+TokenInfo(type=1 (NAME), string=&#39;c&#39;, start=(4, 6), end=(4, 7), line=&#39;print(c)&#39;)
+TokenInfo(type=54 (OP), string=&#39;)&#39;, start=(4, 7), end=(4, 8), line=&#39;print(c)&#39;)
+TokenInfo(type=4 (NEWLINE), string=&#39;&#39;, start=(4, 8), end=(4, 9), line=&#39;&#39;)
+TokenInfo(type=0 (ENDMARKER), string=&#39;&#39;, start=(5, 0), end=(5, 0), line=&#39;&#39;)
+</code></pre><p>CPython 会对 tokenize 结果生成一个 parser tree，然后将其转换成 AST</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">ast</span>
+</span></span><span class="line"><span class="cl"><span class="n">code_str</span> <span class="o">=</span> <span class="s1">&#39;&#39;&#39;
+</span></span></span><span class="line"><span class="cl"><span class="s1">def hello_world():
+</span></span></span><span class="line"><span class="cl"><span class="s1">    return &#39;hello world&#39;
+</span></span></span><span class="line"><span class="cl"><span class="s1">&#39;&#39;&#39;</span>
+</span></span><span class="line"><span class="cl"><span class="n">node</span> <span class="o">=</span> <span class="n">ast</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="n">code_str</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;exec&#39;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="n">ast</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+</span></span></code></pre></div><p>输出</p>
+<pre tabindex="0"><code>&#34;Module(body=[FunctionDef(name=&#39;hello_world&#39;, args=arguments(posonlyargs=[], args=[], vararg=None, kwonlyargs=[], kw_defaults=[], kwarg=None, defaults=[]), body=[Return(value=Constant(value=&#39;hello world&#39;, kind=None))], decorator_list=[], returns=None, type_comment=None)], type_ignores=[])&#34;
+</code></pre><h3 id="构建符号表">构建符号表<a hidden class="anchor" aria-hidden="true" href="#构建符号表">#</a></h3>
+<p>可以看出 AST 不包含变量的作用域信息，符号表是一个代码块（code block）与上下文（context）中所使用到的名字的集合。符号表的构建过程涉及到对一个代码块中所包含的所有名字以及对这些名字正确作用域赋值的分析。</p>
+<h3 id="从-ast-生成-code-object">从 AST 生成 code object<a hidden class="anchor" aria-hidden="true" href="#从-ast-生成-code-object">#</a></h3>
+<p>根据 AST 以及符号表中的信息来生成 code object：</p>
+<ol>
+<li>AST 被转化为 python 字节码指令的基础块（basic blocks），基础指令块以及块之间的路径被隐式的表示为图（graph）结构，也称之为控制流图（control flow graph，CFG）</li>
+<li>以后缀深度优先遍历的方式将前一步生成的控制流图扁平化（flatten）。图被扁平化之后，跳转偏移量被计算出来作为 jump 指令的参数。然后再根据这些指令生成 code object</li>
+</ol>
+<h4 id="cfg-生成">CFG 生成<a hidden class="anchor" aria-hidden="true" href="#cfg-生成">#</a></h4>
+<p>下面的函数转化为 CFG 的结果</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">fizzbuzz</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="n">n</span> <span class="o">%</span> <span class="mi">3</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">n</span> <span class="o">%</span> <span class="mi">5</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span> 
+</span></span><span class="line"><span class="cl">        <span class="k">return</span> <span class="s1">&#39;FizzBuzz&#39;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">elif</span> <span class="n">n</span> <span class="o">%</span> <span class="mi">3</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span> 
+</span></span><span class="line"><span class="cl">        <span class="k">return</span> <span class="s1">&#39;Fizz&#39;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">elif</span> <span class="n">n</span> <span class="o">%</span> <span class="mi">5</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span> 
+</span></span><span class="line"><span class="cl">        <span class="k">return</span> <span class="s1">&#39;Buzz&#39;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">else</span><span class="p">:</span> 
+</span></span><span class="line"><span class="cl">        <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+</span></span></code></pre></div><p>转化为的 CFG 图大致表示如下</p>
+<p><img loading="lazy" src="https://raw.githubusercontent.com/luokai0223/blog_img/main/python_compile/fizzbuzz-CFG.png" alt="fizzbuzz CFG图"  />
+</p>
+<p>block1 对应的字节码大致为</p>
+<pre tabindex="0"><code>             LOAD_FAST   
+             LOAD_CONST  
+             BINARY_MODULO
+             LOAD_CONST  
+             COMPARE_OP  
+             JUMP_IF_FALSE_OR_POP  
+             LOAD_FAST   
+             LOAD_CONST  
+             BINARY_MODULO
+             LOAD_CONST  
+             COMPARE_OP 
+</code></pre><p>block2</p>
+<pre tabindex="0"><code>            POP_JUMP_IF_FALSE
+            LOAD_CONST
+            RETURN_VALUE
+            JUMP_FORWARD
+</code></pre><p>block3</p>
+<pre tabindex="0"><code>             LOAD_FAST
+             LOAD_CONST
+             BINARY_MODULO
+             LOAD_CONST
+             COMPARE_OP
+             POP_JUMP_IF_FALSE
+             LOAD_CONST
+             RETURN_VALUE
+             JUMP_FORWARD
+</code></pre><p>block5</p>
+<pre tabindex="0"><code>             LOAD_GLOBAL
+             LOAD_FAST
+             CALL_FUNCTION
+             RETURN_VALUE
+</code></pre><p>CFG 数据结构图如下
+<img loading="lazy" src="https://raw.githubusercontent.com/luokai0223/blog_img/main/python_compile/CFG-source-erd.png" alt="CFG 数据结构图"  />
+</p>
+<p>compiler 结构体，每个被编译的模块，对应一个被初始化的 compiler 数据结构。</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-c" data-lang="c"><span class="line"><span class="cl"><span class="k">struct</span> <span class="n">compiler</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="n">PyObject</span> <span class="o">*</span><span class="n">c_filename</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">struct</span> <span class="n">symtable</span> <span class="o">*</span><span class="n">c_st</span><span class="p">;</span>      <span class="cm">/*指向之前生成的符号表*/</span>
+</span></span><span class="line"><span class="cl">    <span class="n">PyFutureFeatures</span> <span class="o">*</span><span class="n">c_future</span><span class="p">;</span> <span class="cm">/* pointer to module&#39;s __future__ */</span>
+</span></span><span class="line"><span class="cl">    <span class="n">PyCompilerFlags</span> <span class="o">*</span><span class="n">c_flags</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="kt">int</span> <span class="n">c_optimize</span><span class="p">;</span>              <span class="cm">/* optimization level */</span>
+</span></span><span class="line"><span class="cl">    <span class="kt">int</span> <span class="n">c_interactive</span><span class="p">;</span>           <span class="cm">/* true if in interactive mode */</span>
+</span></span><span class="line"><span class="cl">    <span class="kt">int</span> <span class="n">c_nestlevel</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="k">struct</span> <span class="n">compiler_unit</span> <span class="o">*</span><span class="n">u</span><span class="p">;</span>     <span class="cm">/* 一个到 compiler unit 结构体的引用。
+</span></span></span><span class="line"><span class="cl"><span class="cm">                                    这个结构体封装了与一个 code block 进行交互所需的信息。
+</span></span></span><span class="line"><span class="cl"><span class="cm">                                    本字段指向目前正在处理的 code block 所对应的 compiler unit */</span>
+</span></span><span class="line"><span class="cl">    <span class="n">PyObject</span> <span class="o">*</span><span class="n">c_stack</span><span class="p">;</span>           <span class="cm">/* 一个到 compiler unit 栈的引用。
+</span></span></span><span class="line"><span class="cl"><span class="cm">                                    当一个 code block 由多个 code block 所组成时，这个字段负责当遇到一个新的 block 时 compiler unit 结构体的储存与恢复。
+</span></span></span><span class="line"><span class="cl"><span class="cm">                                    当进入一个新的 code block 时，一个新的作用域被创建，然后 compiler_enter_scope() 会将当前的 compiler unit （ *u ）push 到栈中。同时 *c_stack 创建一个新的 compiler unit 对象并将其设置为当前compiler unit。
+</span></span></span><span class="line"><span class="cl"><span class="cm">                                    当离开一个 block 的时候，*c_stack 会根据复原状态进行弹出。 */</span>
+</span></span><span class="line"><span class="cl">    <span class="n">PyArena</span> <span class="o">*</span><span class="n">c_arena</span><span class="p">;</span>            <span class="cm">/* pointer to memory allocation arena */</span>
+</span></span><span class="line"><span class="cl"><span class="p">};</span>
+</span></span></code></pre></div><p>当 AST 被遍历，其中每一个 code block 对应的 compiler_unit 数据结构会被生成，compiler_unit 结构体持有生成一个 code block 对应的字节码指令所需的信息。</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="k">struct</span> <span class="nc">compiler_unit</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="n">PySTEntryObject</span> <span class="o">*</span><span class="n">u_ste</span><span class="p">;</span> <span class="cm">/*到一个被编译的 code block 中的符号表项的引用*/</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="n">PyObject</span> <span class="o">*</span><span class="n">u_name</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">PyObject</span> <span class="o">*</span><span class="n">u_qualname</span><span class="p">;</span>  <span class="cm">/* dot-separated qualified name (lazy) */</span>
+</span></span><span class="line"><span class="cl">    <span class="kt">int</span> <span class="n">u_scope_type</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="cm">/* The following fields are dicts that map objects to
+</span></span></span><span class="line"><span class="cl"><span class="cm">       the index of them in co_XXX.      The index is used as
+</span></span></span><span class="line"><span class="cl"><span class="cm">       the argument for opcodes that refer to those collections.
+</span></span></span><span class="line"><span class="cl"><span class="cm">    */</span>
+</span></span><span class="line"><span class="cl">    <span class="n">PyObject</span> <span class="o">*</span><span class="n">u_consts</span><span class="p">;</span>    <span class="cm">/* all constants */</span>
+</span></span><span class="line"><span class="cl">    <span class="n">PyObject</span> <span class="o">*</span><span class="n">u_names</span><span class="p">;</span>     <span class="cm">/* all names */</span>
+</span></span><span class="line"><span class="cl">    <span class="n">PyObject</span> <span class="o">*</span><span class="n">u_varnames</span><span class="p">;</span>  <span class="cm">/* local variables */</span>
+</span></span><span class="line"><span class="cl">    <span class="n">PyObject</span> <span class="o">*</span><span class="n">u_cellvars</span><span class="p">;</span>  <span class="cm">/* cell variables */</span>
+</span></span><span class="line"><span class="cl">    <span class="n">PyObject</span> <span class="o">*</span><span class="n">u_freevars</span><span class="p">;</span>  <span class="cm">/* free variables */</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="n">PyObject</span> <span class="o">*</span><span class="n">u_private</span><span class="p">;</span>        <span class="cm">/* for private name mangling */</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="n">Py_ssize_t</span> <span class="n">u_argcount</span><span class="p">;</span>        <span class="cm">/* number of arguments for block */</span>
+</span></span><span class="line"><span class="cl">    <span class="n">Py_ssize_t</span> <span class="n">u_kwonlyargcount</span><span class="p">;</span> <span class="cm">/* number of keyword only arguments for block */</span>
+</span></span><span class="line"><span class="cl">    <span class="cm">/* Pointer to the most recently allocated block.  By following b_list
+</span></span></span><span class="line"><span class="cl"><span class="cm">       members, you can reach all early allocated blocks. */</span>
+</span></span><span class="line"><span class="cl">    <span class="n">basicblock</span> <span class="o">*</span><span class="n">u_blocks</span><span class="p">;</span>   <span class="cm">/*用于引用那些组成被编译的 code block 的基础块*/</span>
+</span></span><span class="line"><span class="cl">    <span class="n">basicblock</span> <span class="o">*</span><span class="n">u_curblock</span><span class="p">;</span> <span class="cm">/* pointer to current block 用于引用那些组成被编译的 code block 的基础块 */</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="kt">int</span> <span class="n">u_nfblocks</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">struct</span> <span class="nc">fblockinfo</span> <span class="n">u_fblock</span><span class="p">[</span><span class="n">CO_MAXBLOCKS</span><span class="p">];</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="kt">int</span> <span class="n">u_firstlineno</span><span class="p">;</span> <span class="cm">/* the first lineno of the block */</span>
+</span></span><span class="line"><span class="cl">    <span class="kt">int</span> <span class="n">u_lineno</span><span class="p">;</span>          <span class="cm">/* the lineno for the current stmt */</span>
+</span></span><span class="line"><span class="cl">    <span class="kt">int</span> <span class="n">u_col_offset</span><span class="p">;</span>      <span class="cm">/* the offset of the current stmt */</span>
+</span></span><span class="line"><span class="cl">    <span class="kt">int</span> <span class="n">u_lineno_set</span><span class="p">;</span>  <span class="cm">/* boolean to indicate whether instr
+</span></span></span><span class="line"><span class="cl"><span class="cm">                          has been generated with current lineno */</span>
+</span></span><span class="line"><span class="cl"><span class="p">};</span>
+</span></span></code></pre></div><p>组成 code block 的不同节点在编译过程中会被遍历，根据一个节点类型的不同，判断是否能够起始一个 basic block，不能时会添加新指令到 basic block，能时会创建含有 node 指令的新 basic block，能够起始一个 basic block 的节点类型包括但不限于：</p>
+<ol>
+<li>函数节点</li>
+<li>跳转目标</li>
+<li>异常处理</li>
+<li>布尔运算等</li>
+</ol>
+<p>一个 basic block 是一个具有单一入口与多个出口的指令序列</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="k">typedef</span> <span class="k">struct</span> <span class="nc">basicblock_</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="cm">/* Each basicblock in a compilation unit is linked via b_list in the
+</span></span></span><span class="line"><span class="cl"><span class="cm">       reverse order that the block are allocated.  b_list points to the next
+</span></span></span><span class="line"><span class="cl"><span class="cm">       block, not to be confused with b_next, which is next by control flow. */</span>
+</span></span><span class="line"><span class="cl">    <span class="k">struct</span> <span class="nc">basicblock_</span> <span class="o">*</span><span class="n">b_list</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="cm">/* number of instructions used */</span>
+</span></span><span class="line"><span class="cl">    <span class="kt">int</span> <span class="n">b_iused</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="cm">/* length of instruction array (b_instr) */</span>
+</span></span><span class="line"><span class="cl">    <span class="kt">int</span> <span class="n">b_ialloc</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="cm">/* pointer to an array of instructions, initially NULL */</span>
+</span></span><span class="line"><span class="cl">    <span class="k">struct</span> <span class="nc">instr</span> <span class="o">*</span><span class="n">b_instr</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="cm">/* If b_next is non-NULL, it is a pointer to the next
+</span></span></span><span class="line"><span class="cl"><span class="cm">       block reached by normal control flow. 
+</span></span></span><span class="line"><span class="cl"><span class="cm">       引用到一个指令结构体的数组，一个指令结构体对应于一条字节码指令，字节码指令的编号可在头文件 Include/opcode.h 中找到
+</span></span></span><span class="line"><span class="cl"><span class="cm">    */</span>
+</span></span><span class="line"><span class="cl">    <span class="k">struct</span> <span class="nc">basicblock_</span> <span class="o">*</span><span class="n">b_next</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="cm">/* b_seen is used to perform a DFS of basicblocks. */</span>
+</span></span><span class="line"><span class="cl">    <span class="kt">unsigned</span> <span class="nl">b_seen</span> <span class="p">:</span> <span class="mi">1</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="cm">/* b_return is true if a RETURN_VALUE opcode is inserted. */</span>
+</span></span><span class="line"><span class="cl">    <span class="kt">unsigned</span> <span class="nl">b_return</span> <span class="p">:</span> <span class="mi">1</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="cm">/* depth of stack upon entry of block, computed by stackdepth() */</span>
+</span></span><span class="line"><span class="cl">    <span class="kt">int</span> <span class="n">b_startdepth</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="cm">/* instruction offset for block, computed by assemble_jump_offsets() */</span>
+</span></span><span class="line"><span class="cl">    <span class="kt">int</span> <span class="n">b_offset</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span> <span class="n">basicblock</span><span class="p">;</span>
+</span></span></code></pre></div><p>指令结构体 instr</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="k">struct</span> <span class="nc">instr</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="kt">unsigned</span> <span class="nl">i_jabs</span> <span class="p">:</span> <span class="mi">1</span><span class="p">;</span>  <span class="c1">// 绝对跳转 jump absolute
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="kt">unsigned</span> <span class="nl">i_jrel</span> <span class="p">:</span> <span class="mi">1</span><span class="p">;</span>  <span class="c1">// 相对跳转 jump relative
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="kt">unsigned</span> <span class="kt">char</span> <span class="n">i_opcode</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="kt">int</span> <span class="n">i_oparg</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">struct</span> <span class="nc">basicblock_</span> <span class="o">*</span><span class="n">i_target</span><span class="p">;</span> <span class="cm">/* target block (if jump instruction) */</span>
+</span></span><span class="line"><span class="cl">    <span class="kt">int</span> <span class="n">i_lineno</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="p">};</span>
+</span></span></code></pre></div><h4 id="汇编-basic-blocks">汇编 basic blocks<a hidden class="anchor" aria-hidden="true" href="#汇编-basic-blocks">#</a></h4>
+<p>一旦 CFG 被生成，basic blocks 包含了字节码指令，但目前这些 blocks 还不是线性排列的。
+跳转指令的目标仍是 basic block 而不是指令流中的绝对偏移量。
+assemble 函数将会把 CFG 进行线性排列并生成 code object。
+assemble以“后序深度优先（post-order deep first）”的方式遍历 CFG 图，以对它进行扁平化。后序遍历指的是在遍历时先访问所有的子节点再访问根节点
+<img loading="lazy" src="https://raw.githubusercontent.com/luokai0223/blog_img/main/python_compile/python-vm-cfg-assemble-graph.png" alt="示例"  />
+
+在对一个图进行后序深度优先遍历时，我们首先会递归地访问一个根结点的左子节点，然后是右子节点，然后才是这个根节点自己。比如以上面这个图结构作为例子，当我们以后序深度优先遍历对它进行扁平化的时候，对节点的访问顺序是：H -&gt; D -&gt; I -&gt; J -&gt; E -&gt; B -&gt; K -&gt; L -&gt; F -&gt; G -&gt; C -&gt; A 。如果是前序（pre-order）遍历的话：A -&gt; B -&gt; D -&gt; H -&gt; E -&gt; I -&gt; J -&gt; C -&gt; F -&gt; K -&gt; L -&gt; G 。而如果是中序（in-order）遍历：H -&gt; D -&gt; B -&gt; I -&gt; E -&gt; J -&gt; A -&gt; K -&gt; L -&gt; F -&gt; C -&gt; G 。
+上面fizzbuzz 函数的 CFG，如果对它进行后序遍历，顺序是：block5 -&gt; block4 -&gt; block3 -&gt; block2 -&gt; block1。
+当 CFG 被扁平化以后，按照指令字节数计算扁平化图的跳转指令的跳转偏移量。
+当字节码生成完毕，code object 对象就可以根据这些字节码以及符号表中的信息进行生成，code object 对象返回给调用函数的时候，整个编译过程就在此结束了。</p>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+    </ul>
+<nav class="paginav">
+  <a class="prev" href="https://luokai.tech/posts/python/python_vm/">
+    <span class="title">« 上一页</span>
+    <br>
+    <span>Python 代码编译运行过程（2）：Python 虚拟机</span>
+  </a>
+  <a class="next" href="https://luokai.tech/posts/pytorch_read/build_v2/">
+    <span class="title">下一页 »</span>
+    <br>
+    <span>PyTorch 源码阅读笔记（6）：PyTorch 2.0 编译与安装</span>
+  </a>
+</nav>
+
+  </footer>
+</article>
+    </main>
+    
+<footer class="footer">
+    <span>&copy; 2023 <a href="https://luokai.tech/">K&#39;s blog</a></span>
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" aria-label="go to top" title="Go to Top (Alt + G)" class="top-link" id="top-link" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentColor">
+        <path d="M12 6H0l6-6z" />
+    </svg>
+</a>
+
+<script>
+    let menu = document.getElementById('menu')
+    if (menu) {
+        menu.scrollLeft = localStorage.getItem("menu-scroll-position");
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var mybutton = document.getElementById("top-link");
+    window.onscroll = function () {
+        if (document.body.scrollTop > 800 || document.documentElement.scrollTop > 800) {
+            mybutton.style.visibility = "visible";
+            mybutton.style.opacity = "1";
+        } else {
+            mybutton.style.visibility = "hidden";
+            mybutton.style.opacity = "0";
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        if (document.body.className.includes("dark")) {
+            document.body.classList.remove('dark');
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            document.body.classList.add('dark');
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+<script>
+    document.querySelectorAll('pre > code').forEach((codeblock) => {
+        const container = codeblock.parentNode.parentNode;
+
+        const copybutton = document.createElement('button');
+        copybutton.classList.add('copy-code');
+        copybutton.innerHTML = '复制';
+
+        function copyingDone() {
+            copybutton.innerHTML = '已复制！';
+            setTimeout(() => {
+                copybutton.innerHTML = '复制';
+            }, 2000);
+        }
+
+        copybutton.addEventListener('click', (cb) => {
+            if ('clipboard' in navigator) {
+                navigator.clipboard.writeText(codeblock.textContent);
+                copyingDone();
+                return;
+            }
+
+            const range = document.createRange();
+            range.selectNodeContents(codeblock);
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+            try {
+                document.execCommand('copy');
+                copyingDone();
+            } catch (e) { };
+            selection.removeRange(range);
+        });
+
+        if (container.classList.contains("highlight")) {
+            container.appendChild(copybutton);
+        } else if (container.parentNode.firstChild == container) {
+            
+        } else if (codeblock.parentNode.parentNode.parentNode.parentNode.parentNode.nodeName == "TABLE") {
+            
+            codeblock.parentNode.parentNode.parentNode.parentNode.parentNode.appendChild(copybutton);
+        } else {
+            
+            codeblock.parentNode.appendChild(copybutton);
+        }
+    });
+</script>
+</body>
+
+</html>
