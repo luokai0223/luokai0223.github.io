@@ -172,6 +172,21 @@ if (!doNotTrack) {
 
 <article class="post-entry"> 
   <header class="entry-header">
+    <h2>PyTorch 源码阅读笔记（1）：dispatcher
+    </h2>
+  </header>
+  <div class="entry-content">
+    <p>什么是dispatcher 关于 PyTorch 的 dispatcher，PyTorch 的核心作者之一 Edward Z Yang 有过介绍：Let’s talk about the PyTorch dispatcher
+PyTorch 作为多平台的神经网络框架，需要实现这样一种功能：每个通用的算子都要实现一些相同的 api，比如前传和反传，这些相同的api在不同的硬件设备会有不同的代码实现，CPU下可能要用到MKL，GPU下是CUDA，各个厂商的NPU加速卡也可能有不同的底层代码。PyTorch 需要根据不同的硬件设备和使用场景，调用对应的函数实现，dispatcher 能够实现这个功能。
+对于每个operator，dispatcher都会维护一个函数指针表，为每个dispatch key提供对应的实现。
+Dispatcher class TORCH_API Dispatcher final { // 嵌套结构体 struct OperatorDef final { explicit OperatorDef(OperatorName&amp;&amp; op_name) : op(std::move(op_name)) {} impl::OperatorEntry op; size_t def_count = 0; size_t def_and_impl_count = 0; }; // 成员函数 C10_ALWAYS_INLINE static Dispatcher&amp; singleton() { // ... static Dispatcher&amp; s = realSingleton(); /* 全局单例 C10_EXPORT Dispatcher&amp; Dispatcher::realSingleton() { static Dispatcher _singleton; return _singleton; } */ return s; } // 成员变量 LeftRight&lt;ska::flat_hash_map&lt;OperatorName, OperatorHandle&gt;&gt; operatorLookupTable_; std::list&lt;OperatorDef&gt; operators_; } operatorLookupTable_ 是一个算子表 LeftRight 实现参考：Brief Announcement: Left-Right - A Concurrency Control Technique with Wait-Free Population Oblivious Reads，大概逻辑是给任意的数据结构生成两份实例左和右，同时存在读写的时候，读左边的写右边的，写入完成后读取换到右边，当左边的所有读结束后，右边的写入再同步到左边，这种并发控制方式实现了零等待的读操作。...</p>
+  </div>
+  <footer class="entry-footer"><span title='2023-02-11 00:00:00 +0000 UTC'>2023-02-11</span>&nbsp;·&nbsp;692 字&nbsp;·&nbsp;luokai</footer>
+  <a class="entry-link" aria-label="post link to PyTorch 源码阅读笔记（1）：dispatcher" href="https://luokai.tech/posts/pytorch_read/dispatcher/"></a>
+</article>
+
+<article class="post-entry"> 
+  <header class="entry-header">
     <h2>论文阅读笔记：遮挡环境下的面部识别概述
     </h2>
   </header>

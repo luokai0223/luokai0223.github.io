@@ -157,6 +157,22 @@ if (!doNotTrack) {
 
 <article class="post-entry tag-entry"> 
   <header class="entry-header">
+    <h2>PyTorch 源码阅读笔记（7）：TorchDynamo
+    </h2>
+  </header>
+  <div class="entry-content">
+    <p>关于 TorchDynamo torchdynamo 为 PyTorch 2.0 的新功能，可以在不修改代码的情况下，对大部分模型提速，基本的使用方式如下
+import torch def fn(x, y): a = torch.cos(x).cuda() b = torch.sin(y).cuda() return a &#43; b new_fn = torch.compile(fn, backend=&#34;inductor&#34;) input_tensor = torch.randn(10000).to(device=&#34;cuda:0&#34;) a = new_fn(input_tensor, input_tensor) TorchDynamo 原理 官方给出的 TorchDynamo 原理图如下
+涉及到关于 Python 编译运行的内容参考 [python 编译运行过程](Python 代码编译运行过程（1）：编译过程 | K’s blog (luokai.tech)
+字节码优化 torchdynamo 通过捕捉 python 的 frame object 进行字节码优化，运行如下代码
+from torch._dynamo import optimize import torch._dynamo.config import logging torch._dynamo.config.log_level = logging.INFO torch._dynamo.config.output_code = True @optimize() def toy_example(a, b): a *= 10 b = b &#43; 1 return b for _ in range(100): toy_example(torch....</p>
+  </div>
+  <footer class="entry-footer"><span title='2023-03-10 00:00:00 +0000 UTC'>2023-03-10</span>&nbsp;·&nbsp;387 字&nbsp;·&nbsp;luokai</footer>
+  <a class="entry-link" aria-label="post link to PyTorch 源码阅读笔记（7）：TorchDynamo" href="https://luokai.tech/posts/pytorch_read/torchdynamo/"></a>
+</article>
+
+<article class="post-entry tag-entry"> 
+  <header class="entry-header">
     <h2>PyTorch 源码阅读笔记（6）：PyTorch 2.0 编译与安装
     </h2>
   </header>
