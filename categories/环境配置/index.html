@@ -166,7 +166,7 @@ if (!doNotTrack) {
 准备步骤 sudo apt update sudo apt-get install wget gnupg2 sudo usermod -a -G video $LOGNAME sudo usermod -a -G render $LOGNAME echo &#39;ADD_EXTRA_GROUPS=1&#39; | sudo tee -a /etc/adduser.conf echo &#39;EXTRA_GROUPS=video&#39; | sudo tee -a /etc/adduser.conf echo &#39;EXTRA_GROUPS=render&#39; | sudo tee -a /etc/adduser.conf 使用官方安装脚本 我用的是 https://repo.radeon.com/amdgpu-install/22.10.1/ubuntu/focal/amdgpu-install_22.10.1.50101-1_all.deb。 不同的系统和rocm版本，对应的链接不一样，摸索了一下存档逻辑，所有脚本都在repo.radeon.com/amdgpu-install目录下，接着类似日期的数字22.10.1，越大 rocm 版本越高，然后的两级目录是发行版和发行版名称，最后文件名里面的50101表示5.1.1版本，安装完成后按如下命令运行脚本：
 sudo amdgpu-install --usecase=dkms amdgpu-install -y --usecase=rocm 安装过程会用到amd官方域名下的包，下载比较慢，软件后运行 rocm-smi, 看到如下结果：...</p>
   </div>
-  <footer class="entry-footer"><span title='2023-02-11 11:05:08 +0800 CST'>2023 2月 11</span>&nbsp;·&nbsp;367 字&nbsp;·&nbsp;luokai</footer>
+  <footer class="entry-footer"><span title='2023-02-11 11:05:08 +0800 CST'>2023-02-11</span>&nbsp;·&nbsp;367 字&nbsp;·&nbsp;luokai</footer>
   <a class="entry-link" aria-label="post link to A卡机器学习配置与使用" href="https://luokai.tech/posts/other/amdcpu_ml_install/"></a>
 </article>
     </main>
