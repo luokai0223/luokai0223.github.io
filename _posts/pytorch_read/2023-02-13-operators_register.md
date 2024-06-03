@@ -238,7 +238,9 @@ void OperatorEntry::registerSchema(FunctionSchema&& schema, std::string&& debug,
 }
 ```  
 registerSchema 首先遍历 kernels_ , 对 AnnotatedKernel 进行检查；  
-然后调用 dispatchKeyExtractor_.registerSchema(schema)（[参考 dispatcher](../dispatcher#Dispatchkeyextractor))记录参数信息；  
+然后调用 dispatchKeyExtractor_.registerSchema(schema)
+<!-- （[参考 dispatcher](../dispatcher#Dispatchkeyextractor)) -->
+记录参数信息；  
 最后生成成员变量 schema_ 。 
 
 ## 算子函数注册
