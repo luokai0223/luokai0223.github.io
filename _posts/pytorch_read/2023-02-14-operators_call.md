@@ -11,7 +11,7 @@ draft: false
 
 
 ## 算子注册
-参考 [原生算子注册](../2023-02-13-operators_register)
+参考 [原生算子注册](../2023-02-13-operators_register.md)
 ## 算子调用过程  
 ### 找到 OperatorHandle
 ```cpp
@@ -84,6 +84,8 @@ C10_ALWAYS_INLINE_UNLESS_MOBILE Return Dispatcher::call(const TypedOperatorHandl
   return kernel.template call<Return, Args...>(op, dispatchKeySet, std::forward<Args>(args)...);
 }
 ```
-上面的代码会使用 [dispatcher](../2023-02-11-dispatcher#Dispatchkeyextractor) 根据之前注册的信息生成一个 dispatchKeySet，然后根据之前注册的算子找到对应的函数运行。
+上面的代码会使用
+[dispatcher]({% post_url pytorch_read/2023-02-11-dispatcher %})
+根据之前注册的信息生成一个 dispatchKeySet，然后根据之前注册的算子找到对应的函数运行。
 ### 自动梯度
-参考 [自动微分张量库](../2023-02-17-autograd)
+[自动微分张量库]({% post_url pytorch_read/2023-02-17-autograd %})
