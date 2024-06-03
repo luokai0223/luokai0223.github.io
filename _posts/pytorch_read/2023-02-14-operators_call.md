@@ -11,7 +11,7 @@ draft: false
 
 
 ## 算子注册
-参考 [原生算子注册](../2023-02-13-operators_register.md)
+参考 [原生算子注册]({% post_url pytorch_read/2023-02-13-operators_register %})
 ## 算子调用过程  
 ### 找到 OperatorHandle
 ```cpp
