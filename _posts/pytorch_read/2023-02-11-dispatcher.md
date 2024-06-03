@@ -10,7 +10,7 @@ draft: false
 ---
 
 ## 什么是dispatcher
-关于 PyTorch 的 dispatcher，PyTorch 的核心作者之一 Edward Z Yang 有过介绍：[Let’s talk about the PyTorch dispatcher](http://blog.ezyang.com/2020/09/lets-talk-about-the-PyTorch-dispatcher/)  
+关于 PyTorch 的 dispatcher，PyTorch 的核心作者之一 Edward Z Yang 有过介绍：[Let’s talk about the PyTorch dispatcher](https://blog.ezyang.com/2020/09/lets-talk-about-the-PyTorch-dispatcher/)  
 PyTorch 作为多平台的神经网络框架，需要实现这样一种功能：每个通用的算子都要实现一些相同的 api，比如前传和反传，这些相同的api在不同的硬件设备会有不同的代码实现，CPU下可能要用到MKL，GPU下是CUDA，各个厂商的NPU加速卡也可能有不同的底层代码。PyTorch 需要根据不同的硬件设备和使用场景，调用对应的函数实现，dispatcher 能够实现这个功能。  
 对于每个operator，dispatcher都会维护一个函数指针表，为每个dispatch key提供对应的实现。  
 ## Dispatcher
