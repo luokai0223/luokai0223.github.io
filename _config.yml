@@ -36,6 +36,7 @@ social:
   # It will be displayed as the default author of the posts and the copyright owner in the Footer
   # name: luok
   email: luokai0223@126.com # change to your email address
+  wechat: day2334567
   # links:
   #   # The first element serves as the copyright owner's link
   #   - https://twitter.com/username # change to your twitter homepage
@@ -59,7 +60,7 @@ social:
 # Web Analytics Settings
 analytics:
   google:
-    id: UA-67470195-2 # fill in your Google Analytics ID
+    id: 355180992 # fill in your Google Analytics ID
 #   goatcounter:
 #     id: # fill in your GoatCounter ID
 #   umami:

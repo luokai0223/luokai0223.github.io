@@ -34,7 +34,7 @@ draft: false
 #### 结果分析
 
 - 使用 xyz plot 插件查看训练轮次-lora强度的对比图：
-- ![xyz plot](https://github.com/luokai0223/luokai0223.github.io/raw/master/pics/2023-08-16-stable_diffusion_lora/2.png)
+- ![xyz plot](https://raw.githubusercontent.com/luokai0223/luokai0223.github.io/main/pics/2023-08-16-stable_diffusion_lora/2.png)
 - 本次测试的真人眼间距有一点点宽，中庭偏长，额头有点大。在 lora 强度较大时能明显发现五官缺陷被放大。
 - 图片不宜过多，试过100多张图片，画面光影、背景、人物眼神异常，原始人物五官缺陷被放大。
 - 训练轮次2轮内，强度设置0.7也能看见原始人物脸部特征，但是眼神和光影异常。
