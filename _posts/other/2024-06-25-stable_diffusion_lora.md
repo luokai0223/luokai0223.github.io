@@ -6,7 +6,7 @@ keywords:
 - stable diffusion
 - 扩散模型
 - lora 训练
-date: 2023-08-16
+date: 2024-06-25
 draft: false
 ---
 
