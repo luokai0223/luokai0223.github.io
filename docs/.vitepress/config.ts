@@ -47,9 +47,9 @@ export default defineConfig({
     sidebar: autoSidebar,
 
     // 社交链接
-    socialLinks: [
-      { icon: 'github', link: 'https://github.com/luokai0223' }
-    ],
+    // socialLinks: [
+    //   { icon: 'github', link: 'https://github.com/luokai0223' }
+    // ],
 
     // 页脚
     footer: {
@@ -58,10 +58,10 @@ export default defineConfig({
     },
 
     // 编辑链接
-    editLink: {
-      pattern: 'https://github.com/luokai0223/luokai0223.github.io/edit/main/docs/:path',
-      text: '在 GitHub 上编辑此页'
-    },
+    // editLink: {
+    //   pattern: 'https://github.com/luokai0223/luokai0223.github.io/edit/main/docs/:path',
+    //   text: '在 GitHub 上编辑此页'
+    // },
 
     // 最后更新
     lastUpdated: {

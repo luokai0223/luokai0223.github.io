@@ -166,14 +166,14 @@ function generateSidebar() {
     rootItems.push(createCollapsibleGroup(DOCS_DIR, category, categoryTitle))
   }
 
-  // 添加根路径的其他页面（如 about.md）
-  const aboutPath = join(DOCS_DIR, 'about.md')
-  if (existsSync(aboutPath)) {
-    rootItems.push({
-      text: '关于',
-      link: '/about'
-    })
-  }
+  // 不再添加"关于"页面到侧边栏
+  // const aboutPath = join(DOCS_DIR, 'about.md')
+  // if (existsSync(aboutPath)) {
+  //   rootItems.push({
+  //     text: '关于',
+  //     link: '/about'
+  //   })
+  // }
 
   // 所有路径都使用同一个侧边栏配置（根路径的折叠目录）
   return {
