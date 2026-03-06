@@ -1,0 +1,19 @@
+{
+  "name": "klogs-blog",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs",
+    "migrate": "node scripts/migrate-jekyll-to-vitepress.js"
+  },
+  "devDependencies": {
+    "vitepress": "^1.0.0",
+    "gray-matter": "^4.0.3"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  }
+}
