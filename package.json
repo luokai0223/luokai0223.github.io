@@ -4,8 +4,9 @@
   "type": "module",
   "scripts": {
     "generate-sidebar": "node scripts/generate-sidebar.js",
-    "docs:dev": "node scripts/generate-sidebar.js && vitepress dev docs",
-    "docs:build": "node scripts/generate-sidebar.js && vitepress build docs",
+    "generate-timeline": "node scripts/generate-timeline.js",
+    "docs:dev": "node scripts/generate-sidebar.js && node scripts/generate-timeline.js && vitepress dev docs",
+    "docs:build": "node scripts/generate-sidebar.js && node scripts/generate-timeline.js && vitepress build docs",
     "docs:preview": "vitepress preview docs",
     "migrate": "node scripts/migrate-jekyll-to-vitepress.js"
   },

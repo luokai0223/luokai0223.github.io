@@ -27,9 +27,31 @@ description: K's blog - 个人技术博客
   </div>
 </div> -->
 
-## 最新文章
+## 文章时间线
 
-<VPLatestPosts />
+<script setup>
+import { onMounted, ref } from 'vue'
+
+const timelineData = ref([])
+
+onMounted(async () => {
+  try {
+    const response = await fetch('/timeline-data.json')
+    timelineData.value = await response.json()
+  } catch (error) {
+    console.error('Failed to load timeline data:', error)
+  }
+})
+</script>
+
+<div class="timeline" v-if="timelineData.length > 0">
+  <div class="timeline-item" v-for="item in timelineData" :key="item.link">
+    <div class="timeline-date">{{ item.date }}</div>
+    <div class="timeline-content">
+      <a :href="item.link" class="timeline-title">{{ item.title }}</a>
+    </div>
+  </div>
+</div>
 
 <style>
 .hero {
@@ -75,5 +97,58 @@ description: K's blog - 个人技术博客
   font-size: 0.875rem;
   color: var(--vp-c-text-2);
   margin-top: 0.5rem;
+}
+
+.timeline {
+  max-width: 800px;
+  margin: 2rem auto;
+  padding: 0 1rem;
+}
+
+.timeline-item {
+  display: flex;
+  gap: 1.5rem;
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--vp-c-divider);
+  transition: background-color 0.2s;
+}
+
+.timeline-item:last-child {
+  border-bottom: none;
+}
+
+.timeline-item:hover {
+  background-color: var(--vp-c-default-soft);
+  margin: 0 -1rem;
+  padding: 1rem;
+  border-radius: 8px;
+}
+
+.timeline-date {
+  flex-shrink: 0;
+  width: 100px;
+  font-size: 0.875rem;
+  color: var(--vp-c-text-2);
+  font-family: var(--vp-font-family-mono);
+  padding-top: 2px;
+}
+
+.timeline-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.timeline-title {
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: var(--vp-c-text-1);
+  text-decoration: none;
+  display: block;
+  line-height: 1.6;
+  transition: color 0.2s;
+}
+
+.timeline-title:hover {
+  color: var(--vp-c-brand);
 }
 </style>
