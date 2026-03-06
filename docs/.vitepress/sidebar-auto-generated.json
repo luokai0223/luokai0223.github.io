@@ -17,16 +17,16 @@
       "collapsible": true,
       "items": [
         {
-          "text": "使用AMD显卡搭建深度学习环境",
-          "link": "/other/amdcpu_ml_install"
+          "text": "支持所有插件的 vscode server 部署",
+          "link": "/other/01-vscode_server_deploy"
         },
         {
           "text": "开源生图模型 stable diffusion lora 训练记录",
-          "link": "/other/stable_diffusion_lora"
+          "link": "/other/02-stable_diffusion_lora"
         },
         {
-          "text": "支持所有插件的 vscode server 部署",
-          "link": "/other/vscode_server_deploy"
+          "text": "使用AMD显卡搭建深度学习环境",
+          "link": "/other/03-amdcpu_ml_install"
         }
       ]
     },
@@ -47,12 +47,12 @@
       "collapsible": true,
       "items": [
         {
-          "text": "Python 代码编译运行过程（1）：编译过程",
-          "link": "/python/01-python_compile"
+          "text": "Python 代码编译运行过程（2）：Python 虚拟机",
+          "link": "/python/01-python_vm"
         },
         {
-          "text": "Python 代码编译运行过程（2）：Python 虚拟机",
-          "link": "/python/02-python_vm"
+          "text": "Python 代码编译运行过程（1）：编译过程",
+          "link": "/python/02-python_compile"
         }
       ]
     },
