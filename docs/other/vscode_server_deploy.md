@@ -1,13 +1,6 @@
----
-title: 支持所有插件的 vscode server 部署
-description: 支持所有插件的 vscode server 部署
-date: Fri Aug 15 2025 08:00:00 GMT+0800 (China Standard Time)
-category: 开发工具
-tags:
-  - vscode
-  - web ide
-  - 开发工具
----
+# 支持所有插件的 vscode server 部署
+
+📅 发布日期：2025-08-15
 
 ### 前言
 

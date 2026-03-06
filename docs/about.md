@@ -1,7 +1,3 @@
----
-title: 关于
-description: 关于本博客
----
 
 # 关于
 

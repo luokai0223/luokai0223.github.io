@@ -1,12 +1,6 @@
----
-title: PyTorch 源码阅读笔记（0）：代码结构与编译
-description: 代码结构与编译
-date: Sat Feb 11 2023 08:00:00 GMT+0800 (China Standard Time)
-category: PyTorch 源码阅读笔记
-tags:
-  - PyTorch 源码阅读
----
+# PyTorch 源码阅读笔记（0）：代码结构与编译
 
+📅 发布日期：2023-02-11
 
 ## PyTorch代码目录结构
 参考PyTorch官方描述，大致代码结构如下所述：

@@ -6,13 +6,13 @@ description: K's blog - 个人技术博客
 # K's blog
 
 <div class="hero">
-  <p class="tagline">个人笔记记录</p>
+  <!-- <p class="tagline">个人笔记记录</p> -->
   <p class="description">
-    记录 PyTorch 源码阅读、Python 学习、深度学习、论文阅读等技术内容
+    个人技术笔记
   </p>
 </div>
 
-<div class="stats">
+<!-- <div class="stats">
   <div class="stat-item">
     <div class="stat-number">15</div>
     <div class="stat-label">篇文章</div>
@@ -25,7 +25,7 @@ description: K's blog - 个人技术博客
     <div class="stat-number">PyTorch</div>
     <div class="stat-label">主要关注</div>
   </div>
-</div>
+</div> -->
 
 ## 最新文章
 

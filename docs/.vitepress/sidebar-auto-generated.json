@@ -1,0 +1,103 @@
+{
+  "/": [
+    {
+      "text": "深度学习",
+      "collapsed": true,
+      "collapsible": true,
+      "items": [
+        {
+          "text": "开源大语言模型 chatglm 简单的并发改造",
+          "link": "/llm/chatglm-concurrent"
+        }
+      ]
+    },
+    {
+      "text": "其他",
+      "collapsed": true,
+      "collapsible": true,
+      "items": [
+        {
+          "text": "使用AMD显卡搭建深度学习环境",
+          "link": "/other/amdcpu_ml_install"
+        },
+        {
+          "text": "开源生图模型 stable diffusion lora 训练记录",
+          "link": "/other/stable_diffusion_lora"
+        },
+        {
+          "text": "支持所有插件的 vscode server 部署",
+          "link": "/other/vscode_server_deploy"
+        }
+      ]
+    },
+    {
+      "text": "论文阅读",
+      "collapsed": true,
+      "collapsible": true,
+      "items": [
+        {
+          "text": "论文阅读笔记：遮挡环境下的面部识别概述",
+          "link": "/paper/occlusion_face"
+        }
+      ]
+    },
+    {
+      "text": "Python",
+      "collapsed": true,
+      "collapsible": true,
+      "items": [
+        {
+          "text": "Python 代码编译运行过程（1）：编译过程",
+          "link": "/python/01-python_compile"
+        },
+        {
+          "text": "Python 代码编译运行过程（2）：Python 虚拟机",
+          "link": "/python/02-python_vm"
+        }
+      ]
+    },
+    {
+      "text": "PyTorch 源码阅读笔记",
+      "collapsed": true,
+      "collapsible": true,
+      "items": [
+        {
+          "text": "PyTorch 源码阅读笔记（7）：TorchDynamo",
+          "link": "/pytorch_read/01-torchdynamo"
+        },
+        {
+          "text": "PyTorch 源码阅读笔记（6）：PyTorch 2.0 编译与安装",
+          "link": "/pytorch_read/02-build_v2"
+        },
+        {
+          "text": "PyTorch 源码阅读笔记（5）：TorchScript",
+          "link": "/pytorch_read/03-torchscript"
+        },
+        {
+          "text": "PyTorch 源码阅读笔记（4）：自动微分张量库",
+          "link": "/pytorch_read/04-autograd"
+        },
+        {
+          "text": "PyTorch 源码阅读笔记（3）：算子调用",
+          "link": "/pytorch_read/05-operators_call"
+        },
+        {
+          "text": "PyTorch 源码阅读笔记（2）：原生算子注册",
+          "link": "/pytorch_read/06-operators_register"
+        },
+        {
+          "text": "PyTorch 源码阅读笔记（1）：dispatcher",
+          "link": "/pytorch_read/07-dispatcher"
+        },
+        {
+          "text": "PyTorch 源码阅读笔记（0）：代码结构与编译",
+          "link": "/pytorch_read/08-build"
+        }
+      ]
+    },
+    {
+      "text": "关于",
+      "link": "/about"
+    }
+  ]
+}

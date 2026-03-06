@@ -1,13 +1,6 @@
----
-title: PyTorch 源码阅读笔记（7）：TorchDynamo
-description: TorchDynamo
-date: Fri Mar 10 2023 08:00:00 GMT+0800 (China Standard Time)
-category: PyTorch 源码阅读笔记
-tags:
-  - PyTorch 源码阅读
-  - TorchDynamo
----
+# PyTorch 源码阅读笔记（7）：TorchDynamo
 
+📅 发布日期：2023-03-10
 
 ## 关于 TorchDynamo
 

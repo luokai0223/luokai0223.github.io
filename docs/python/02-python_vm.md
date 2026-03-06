@@ -1,13 +1,6 @@
----
-title: Python 代码编译运行过程（2）：Python 虚拟机
-description: 简单总结一下 Python 代码编译运行过程
-date: Thu Mar 09 2023 08:00:00 GMT+0800 (China Standard Time)
-category: Python
-tags:
-  - Python3
-  - Python 虚拟机
-  - CPython
----
+# Python 代码编译运行过程（2）：Python 虚拟机
+
+📅 发布日期：2023-03-09
 
 ## 前言
 

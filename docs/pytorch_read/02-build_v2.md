@@ -1,13 +1,6 @@
----
-title: PyTorch 源码阅读笔记（6）：PyTorch 2.0 编译与安装
-description: 编译安装
-date: Fri Mar 03 2023 08:00:00 GMT+0800 (China Standard Time)
-category: PyTorch 源码阅读笔记
-tags:
-  - PyTorch 2.0
-  - PyTorch 编译
----
+# PyTorch 源码阅读笔记（6）：PyTorch 2.0 编译与安装
 
+📅 发布日期：2023-03-03
 
 ## 1、关于 PyTorch 2.0
 PyTorch 主分支已经是2.0版本，新增了大量特性，参考[PyTorch 2.0](https://pytorch.org/get-started/pytorch-2.0/#overview)

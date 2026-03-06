@@ -1,14 +1,6 @@
----
-title: 开源生图模型 stable diffusion lora 训练记录
-description: 帮自媒体朋友做的生图模型训练研究
-date: Tue Jun 25 2024 08:00:00 GMT+0800 (China Standard Time)
-category: 模型训练
-tags:
-  - stable diffusion
-  - 扩散模型
-  - lora 训练
----
+# 开源生图模型 stable diffusion lora 训练记录
 
+📅 发布日期：2024-06-25
 
 ### 场景
 

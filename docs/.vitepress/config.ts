@@ -1,4 +1,5 @@
 import { defineConfig } from 'vitepress'
+import autoSidebar from './sidebar-auto-generated.json'
 
 export default defineConfig({
   // 站点配置
@@ -34,8 +35,6 @@ export default defineConfig({
     // 导航栏
     nav: [
       { text: '首页', link: '/' },
-      { text: '分类', link: '/categories' },
-      { text: '标签', link: '/tags' },
       { text: '关于', link: '/about' },
       {
         text: 'GitHub',
@@ -43,59 +42,9 @@ export default defineConfig({
       }
     ],
 
-    // 侧边栏 - 按分类组织
-    sidebar: [
-      {
-        text: 'PyTorch 源码阅读笔记',
-        collapsible: true,
-        collapsed: false,
-        items: [
-          { text: '自动微分张量库', link: '/pytorch_read/autograd' },
-          { text: '编译构建', link: '/pytorch_read/build' },
-          { text: '编译构建 v2', link: '/pytorch_read/build_v2' },
-          { text: '派发器', link: '/pytorch_read/dispatcher' },
-          { text: '算子调用', link: '/pytorch_read/operators_call' },
-          { text: '算子注册', link: '/pytorch_read/operators_register' },
-          { text: 'TorchScript', link: '/pytorch_read/torchscript' },
-          { text: 'TorchDynamo', link: '/pytorch_read/torchdynamo' }
-        ]
-      },
-      {
-        text: 'Python',
-        collapsible: true,
-        collapsed: true,
-        items: [
-          { text: '代码编译运行过程', link: '/python/python_compile' },
-          { text: 'Python 虚拟机', link: '/python/python_vm' }
-        ]
-      },
-      {
-        text: '深度学习',
-        collapsible: true,
-        collapsed: true,
-        items: [
-          { text: 'ChatGLM 并发改造', link: '/llm/chatglm-concurrent' }
-        ]
-      },
-      {
-        text: '论文阅读',
-        collapsible: true,
-        collapsed: true,
-        items: [
-          { text: '遮挡环境下的面部识别', link: '/paper/occlusion_face' }
-        ]
-      },
-      {
-        text: '其他',
-        collapsible: true,
-        collapsed: true,
-        items: [
-          { text: 'Stable Diffusion LoRA 训练', link: '/other/stable_diffusion_lora' },
-          { text: 'AMD CPU ML 环境安装', link: '/other/amdcpu_ml_install' },
-          { text: 'VSCode Server 部署', link: '/other/vscode_server_deploy' }
-        ]
-      }
-    ],
+    // 侧边栏 - 自动生成
+    // 运行 pnpm generate-sidebar 或 pnpm docs:dev 会自动更新
+    sidebar: autoSidebar,
 
     // 社交链接
     socialLinks: [
@@ -157,7 +106,7 @@ export default defineConfig({
   // 最后更新的 Git 配置
   lastUpdated: true,
 
-  // Vite 服务器配置
+  // Vite 配置
   vite: {
     server: {
       host: '0.0.0.0',

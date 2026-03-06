@@ -1,12 +1,6 @@
----
-title: PyTorch 源码阅读笔记（4）：自动微分张量库
-description: 自动微分张量库
-date: Fri Feb 17 2023 08:00:00 GMT+0800 (China Standard Time)
-category: PyTorch 源码阅读笔记
-tags:
-  - PyTorch 源码阅读
----
+# PyTorch 源码阅读笔记（4）：自动微分张量库
 
+📅 发布日期：2023-02-17
 
 ## 张量库
 张量接口定义可以在 aten/src/ATen/core/TensorBody.h 看到，Tensor 类含有大量自动生成的代码，可以进行算子调用。  

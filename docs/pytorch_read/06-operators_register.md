@@ -1,13 +1,6 @@
----
-title: PyTorch 源码阅读笔记（2）：原生算子注册
-description: 原生算子注册
-date: Mon Feb 13 2023 08:00:00 GMT+0800 (China Standard Time)
-category: PyTorch 源码阅读笔记
-tags:
-  - PyTorch 源码阅读
-  - TorchScript
----
+# PyTorch 源码阅读笔记（2）：原生算子注册
 
+📅 发布日期：2023-02-13
 
 ## 算子定义
 按照官方描述，所有的原生算子（函数）都定义在aten/src/ATen/native/native_functions.yaml文件里面，以一个add算子为例：  

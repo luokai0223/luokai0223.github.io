@@ -1,13 +1,6 @@
----
-title: Python 代码编译运行过程（1）：编译过程
-description: 简单总结一下 Python 代码编译运行过程
-date: 2023-03-07
-category: Python
-tags:
-  - Python3
-  - Python 编译
-  - CPython
----
+# Python 代码编译运行过程（1）：编译过程
+
+📅 发布日期：2023-03-07
 
 ## 前言
 

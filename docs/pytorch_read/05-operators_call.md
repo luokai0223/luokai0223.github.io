@@ -1,13 +1,6 @@
----
-title: PyTorch 源码阅读笔记（3）：算子调用
-description: 算子调用
-date: Tue Feb 14 2023 08:00:00 GMT+0800 (China Standard Time)
-category: PyTorch 源码阅读笔记
-tags:
-  - PyTorch 源码阅读
----
+# PyTorch 源码阅读笔记（3）：算子调用
 
-
+📅 发布日期：2023-02-14
 
 ## 算子注册
 参考 [原生算子注册]({% post_url pytorch_read/2023-02-13-operators_register %})

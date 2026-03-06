@@ -1,17 +1,6 @@
----
-title: 使用AMD显卡搭建深度学习环境
-description: 记录A卡机器学习配置与使用
-date: Tue Apr 25 2023 08:00:00 GMT+0800 (China Standard Time)
-category: 环境配置
-tags:
-  - AMD 机器学习
-  - AMD 深度学习
-  - AMD PyTorch
-  - Deep Learning
-  - ROCm
-  - DirectML
----
+# 使用AMD显卡搭建深度学习环境
 
+📅 发布日期：2023-04-25
 
 ### 总结
 
