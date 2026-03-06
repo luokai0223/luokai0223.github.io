@@ -1,6 +1,6 @@
 # PyTorch 源码阅读笔记（7）：TorchDynamo
 
-📅 发布日期：2023-03-10
+发布日期：2023-03-10
 
 ## 关于 TorchDynamo
 

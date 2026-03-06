@@ -1,6 +1,6 @@
 # PyTorch 源码阅读笔记（5）：TorchScript
 
-📅 发布日期：2023-02-23
+发布日期：2023-02-23
 
 ## TorchScript 的使用
 python api:

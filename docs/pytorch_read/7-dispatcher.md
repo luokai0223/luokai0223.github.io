@@ -1,6 +1,6 @@
 # PyTorch 源码阅读笔记（1）：dispatcher
 
-📅 发布日期：2023-02-11
+发布日期：2023-02-11
 
 ## 什么是dispatcher
 关于 PyTorch 的 dispatcher，PyTorch 的核心作者之一 Edward Z Yang 有过介绍：[Let’s talk about the PyTorch dispatcher](https://blog.ezyang.com/2020/09/lets-talk-about-the-PyTorch-dispatcher/)  
