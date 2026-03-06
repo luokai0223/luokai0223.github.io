@@ -18,15 +18,15 @@
       "items": [
         {
           "text": "支持所有插件的 vscode server 部署",
-          "link": "/other/01-vscode_server_deploy"
+          "link": "/other/1-vscode_server_deploy"
         },
         {
           "text": "开源生图模型 stable diffusion lora 训练记录",
-          "link": "/other/02-stable_diffusion_lora"
+          "link": "/other/2-stable_diffusion_lora"
         },
         {
           "text": "使用AMD显卡搭建深度学习环境",
-          "link": "/other/03-amdcpu_ml_install"
+          "link": "/other/3-amdcpu_ml_install"
         }
       ]
     },
@@ -48,11 +48,11 @@
       "items": [
         {
           "text": "Python 代码编译运行过程（2）：Python 虚拟机",
-          "link": "/python/01-python_vm"
+          "link": "/python/1-python_vm"
         },
         {
           "text": "Python 代码编译运行过程（1）：编译过程",
-          "link": "/python/02-python_compile"
+          "link": "/python/2-python_compile"
         }
       ]
     },
@@ -63,35 +63,35 @@
       "items": [
         {
           "text": "PyTorch 源码阅读笔记（7）：TorchDynamo",
-          "link": "/pytorch_read/01-torchdynamo"
+          "link": "/pytorch_read/1-torchdynamo"
         },
         {
           "text": "PyTorch 源码阅读笔记（6）：PyTorch 2.0 编译与安装",
-          "link": "/pytorch_read/02-build_v2"
+          "link": "/pytorch_read/2-build_v2"
         },
         {
           "text": "PyTorch 源码阅读笔记（5）：TorchScript",
-          "link": "/pytorch_read/03-torchscript"
+          "link": "/pytorch_read/3-torchscript"
         },
         {
           "text": "PyTorch 源码阅读笔记（4）：自动微分张量库",
-          "link": "/pytorch_read/04-autograd"
+          "link": "/pytorch_read/4-autograd"
         },
         {
           "text": "PyTorch 源码阅读笔记（3）：算子调用",
-          "link": "/pytorch_read/05-operators_call"
+          "link": "/pytorch_read/5-operators_call"
         },
         {
           "text": "PyTorch 源码阅读笔记（2）：原生算子注册",
-          "link": "/pytorch_read/06-operators_register"
+          "link": "/pytorch_read/6-operators_register"
         },
         {
           "text": "PyTorch 源码阅读笔记（1）：dispatcher",
-          "link": "/pytorch_read/07-dispatcher"
+          "link": "/pytorch_read/7-dispatcher"
         },
         {
           "text": "PyTorch 源码阅读笔记（0）：代码结构与编译",
-          "link": "/pytorch_read/08-build"
+          "link": "/pytorch_read/8-build"
         }
       ]
     },
