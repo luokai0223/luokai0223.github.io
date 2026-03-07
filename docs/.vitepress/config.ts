@@ -34,6 +34,7 @@ export default defineConfig({
   themeConfig: {
     // 导航栏
     nav: [
+      { text: "K's blog", link: '/' },
       { text: '首页', link: '/' },
       { text: '关于', link: '/about' },
       {
@@ -47,9 +48,9 @@ export default defineConfig({
     sidebar: autoSidebar,
 
     // 社交链接
-    // socialLinks: [
-    //   { icon: 'github', link: 'https://github.com/luokai0223' }
-    // ],
+    socialLinks: [
+      { icon: 'github', link: 'https://github.com/luokai0223' }
+    ],
 
     // 页脚
     footer: {
@@ -75,7 +76,7 @@ export default defineConfig({
     // 目录
     outline: {
       level: [2, 3],
-      label: '页面导航'
+      label: '文章目录'
     }
   },
 
