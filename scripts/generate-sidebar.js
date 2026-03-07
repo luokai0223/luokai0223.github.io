@@ -112,7 +112,7 @@ function createCollapsibleGroup(docsDir, categoryDir, categoryTitle) {
 
   return {
     text: categoryTitle,
-    collapsed: true,
+    collapsed: false,
     collapsible: true,
     items: items
   }

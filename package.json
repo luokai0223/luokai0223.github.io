@@ -3,16 +3,15 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "generate-sidebar": "node scripts/generate-sidebar.js",
-    "generate-timeline": "node scripts/generate-timeline.js",
-    "docs:dev": "node scripts/generate-sidebar.js && node scripts/generate-timeline.js && vitepress dev docs",
-    "docs:build": "node scripts/generate-sidebar.js && node scripts/generate-timeline.js && vitepress build docs",
+    "docs:dev": "node scripts/generate-sidebar.js && vitepress dev docs",
+    "docs:build": "node scripts/generate-sidebar.js && vitepress build docs",
     "docs:preview": "vitepress preview docs",
+    "generate-sidebar": "node scripts/generate-sidebar.js",
     "migrate": "node scripts/migrate-jekyll-to-vitepress.js"
   },
   "devDependencies": {
-    "vitepress": "^1.0.0",
-    "gray-matter": "^4.0.3"
+    "gray-matter": "^4.0.3",
+    "vitepress": "^1.0.0"
   },
   "engines": {
     "node": ">=18.0.0",

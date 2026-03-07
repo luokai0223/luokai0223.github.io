@@ -2,7 +2,7 @@
   "/": [
     {
       "text": "深度学习",
-      "collapsed": true,
+      "collapsed": false,
       "collapsible": true,
       "items": [
         {
@@ -13,7 +13,7 @@
     },
     {
       "text": "其他",
-      "collapsed": true,
+      "collapsed": false,
       "collapsible": true,
       "items": [
         {
@@ -32,7 +32,7 @@
     },
     {
       "text": "论文阅读",
-      "collapsed": true,
+      "collapsed": false,
       "collapsible": true,
       "items": [
         {
@@ -43,7 +43,7 @@
     },
     {
       "text": "Python",
-      "collapsed": true,
+      "collapsed": false,
       "collapsible": true,
       "items": [
         {
@@ -58,7 +58,7 @@
     },
     {
       "text": "PyTorch 源码阅读笔记",
-      "collapsed": true,
+      "collapsed": false,
       "collapsible": true,
       "items": [
         {

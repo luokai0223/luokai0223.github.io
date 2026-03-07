@@ -8,7 +8,7 @@ export default defineConfig({
   lang: 'zh-CN',
 
   // 外观
-  appearance: 'light',
+  appearance: true,
 
   // SEO 和头部配置
   head: [
@@ -32,10 +32,15 @@ export default defineConfig({
 
   // 主题配置
   themeConfig: {
+    // 搜索配置
+    search: {
+      provider: 'local'
+    },
+
     // 导航栏
     nav: [
-      { text: "K's blog", link: '/' },
       { text: '首页', link: '/' },
+      { text: '文章列表', link: '/latest' },
       { text: '关于', link: '/about' },
       {
         text: 'GitHub',
@@ -43,7 +48,7 @@ export default defineConfig({
       }
     ],
 
-    // 侧边栏 - 自动生成
+    // 侧边栏配置 - 自动生成
     // 运行 pnpm generate-sidebar 或 pnpm docs:dev 会自动更新
     sidebar: autoSidebar,
 
