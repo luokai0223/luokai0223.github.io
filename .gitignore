@@ -29,4 +29,7 @@ package-lock.json
 _sass/dist
 assets/js/dist
 
+# 草稿目录
+docs/drafts/
+
 .claude

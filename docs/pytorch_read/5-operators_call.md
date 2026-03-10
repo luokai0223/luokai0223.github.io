@@ -3,7 +3,7 @@
 发布日期：2023-02-14
 
 ## 算子注册
-参考 [原生算子注册]({% post_url pytorch_read/2023-02-13-operators_register %})
+参考 [原生算子注册](./6-operators_register.md)
 ## 算子调用过程  
 ### 找到 OperatorHandle
 ```cpp
@@ -77,7 +77,7 @@ C10_ALWAYS_INLINE_UNLESS_MOBILE Return Dispatcher::call(const TypedOperatorHandl
 }
 ```
 上面的代码会使用
-[dispatcher]({% post_url pytorch_read/2023-02-11-dispatcher %})
+[dispatcher](./7-dispatcher.md)
 根据之前注册的信息生成一个 dispatchKeySet，然后根据之前注册的算子找到对应的函数运行。
 ### 自动梯度
-[自动微分张量库]({% post_url pytorch_read/2023-02-17-autograd %})
+[自动微分张量库](./4-autograd.md)

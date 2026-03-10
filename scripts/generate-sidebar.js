@@ -129,7 +129,8 @@ function getCategories(docsDir) {
     const fullPath = join(docsDir, entry)
     const stat = statSync(fullPath)
 
-    if (stat.isDirectory() && !entry.startsWith('.') && entry !== '.vitepress') {
+    // 排除隐藏目录、.vitepress 和 drafts 草稿目录
+    if (stat.isDirectory() && !entry.startsWith('.') && entry !== '.vitepress' && entry !== 'drafts') {
       // 检查目录中是否有 markdown 文件
       const mdFiles = getMarkdownFiles(fullPath)
       const hasIndex = existsSync(join(fullPath, 'index.md'))
