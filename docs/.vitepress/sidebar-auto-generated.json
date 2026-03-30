@@ -1,17 +1,6 @@
 {
   "/": [
     {
-      "text": "深度学习",
-      "collapsed": false,
-      "collapsible": true,
-      "items": [
-        {
-          "text": "开源大语言模型 chatglm 简单的并发改造",
-          "link": "/llm/chatglm-concurrent"
-        }
-      ]
-    },
-    {
       "text": "其他",
       "collapsed": false,
       "collapsible": true,
@@ -27,6 +16,10 @@
         {
           "text": "使用AMD显卡搭建深度学习环境",
           "link": "/other/3-amdcpu_ml_install"
+        },
+        {
+          "text": "开源大语言模型 chatglm 简单的并发改造",
+          "link": "/other/chatglm-concurrent"
         }
       ]
     },
